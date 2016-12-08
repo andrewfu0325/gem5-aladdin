@@ -244,7 +244,9 @@ DMASequencer::makeRequest(PacketPtr pkt)
     }
 
     uint64_t paddr = pkt->getAddr();
-    uint8_t* data =  pkt->getPtr<uint8_t>();
+    // Fake simulator-only commands: Invalidate and Flush
+    // Data DON'T need to be transmitted
+    uint8_t* data = (!(pkt->isFlush() | pkt->isInvalidate())?pkt->getPtr<uint8_t>():nullptr);
     int len = pkt->getSize();
     bool write = pkt->isWrite();
 

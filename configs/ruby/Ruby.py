@@ -185,7 +185,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = []):
     protocol = buildEnv['PROTOCOL']
     exec "import %s" % protocol
     try:
-        (cpu_sequencers, dir_cntrls, topology) = \
+        (cpu_sequencers, accel_sequencers, dir_cntrls, topology) = \
              eval("%s.create_system(options, full_system, system, dma_ports,\
                                     ruby)"
                   % protocol)
@@ -228,8 +228,8 @@ def create_system(options, full_system, system, piobus = None, dma_ports = []):
 
             if buildEnv['TARGET_ISA'] == "x86":
                 cpu_seq.pio_slave_port = piobus.master
-
-    ruby._cpu_ports = cpu_sequencers
+    ruby._cpu_ruby_ports = cpu_sequencers
+    ruby._accel_ruby_ports = accel_sequencers
     ruby.num_of_sequencers = len(cpu_sequencers)
     ruby.random_seed    = options.random_seed
 

@@ -207,7 +207,7 @@ if options.accel_cfg_file:
         benchName = config.get(accel, "bench_name"),
         traceFileName = config.get(accel, "trace_file_name"),
         configFileName = config.get(accel, "config_file_name"),
-        acceleratorName = "datapath%d" % config.getint(accel, "accelerator_id"),
+        acceleratorName = "datapath%d" % config.getint(accel, "accelerator_id"),      
         acceleratorId = config.getint(accel, "accelerator_id"),
         cycleTime = cycleTime,
         useDb = config.getboolean(accel, "use_db"),
@@ -284,13 +284,16 @@ if options.ruby:
         print >> sys.stderr, "Ruby requires TimingSimpleCPU or O3CPU!!"
         sys.exit(1)
 
-    # Set the option for physmem so that it is not allocated any space
-    system.physmem = MemClass(range=AddrRange(options.mem_size),
-                              null = True)
-
     options.use_map = True
-    Ruby.create_system(options, system)
+    # Manually extract spad_port of accelerator
+    # In order to fit the Ruby system
+    dma_ports = []
+    for datapath in system.datapaths:
+        dma_ports.append(datapath.spad_port)
+
+    Ruby.create_system(options, False, system, None, dma_ports)
     assert(options.num_cpus == len(system.ruby._cpu_ruby_ports))
+    assert(len(system.datapaths) == len(system.ruby._accel_ruby_ports))
 
     for i in xrange(np):
         ruby_port = system.ruby._cpu_ruby_ports[i]
@@ -309,6 +312,9 @@ if options.ruby:
             system.cpu[i].interrupts.int_slave = ruby_port.master
             system.cpu[i].itb.walker.port = ruby_port.slave
             system.cpu[i].dtb.walker.port = ruby_port.slave
+    for datapath in system.datapaths:
+        ruby_port = system.ruby._accel_ruby_ports[i]
+        datapath.cache_port = ruby_port.slave
 else:
     system.membus = SystemXBar(is_perfect_bus=options.is_perfect_bus,
                                width=options.xbar_width)
