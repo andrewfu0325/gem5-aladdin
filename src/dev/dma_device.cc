@@ -211,24 +211,6 @@ DmaPort::dmaAction(Packet::Command cmd, Addr addr, int size, Event *event,
           queueDma(channel_idx, pkt);
       }
     } 
-    /* TODO: Make sure where te actual flush has been issued?
-    else if(memcmd.isRead()) {
-      // Flush requests have no completion events, generate no
-      // responses, and do not transmit data.
-      DmaReqState *flushReqState = new DmaReqState(nullptr, 0, addr, delay);
-      for (ChunkGenerator gen(addr, size, sys->cacheLineSize());
-           !gen.done(); gen.next()) {
-          req = new Request(gen.addr(), gen.size(), flag, masterId);
-          req->taskId(ContextSwitchTaskId::DMA);
-          PacketPtr pkt = new Packet(req, MemCmd::FlushReq);
-          pkt->senderState = flushReqState;
-
-          DPRINTF(DMA, "--Queuing flush request for addr: %#x size: %d in channel %d\n",
-                  gen.addr(), gen.size(), channel_idx);
-          queueDma(channel_idx, pkt);
-      }
-    }
-    */
 
     /* TODO: Currently as we dynamically add channels, the channel ID is the
      * last channel that is just added. If we switch to the fixed-number of

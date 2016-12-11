@@ -55,6 +55,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         panic("This script requires the MOESI_CMP_directory protocol to be built.")
 
     cpu_sequencers = []
+    accel_sequencers = []
     
     #
     # The ruby network creation expects the list of nodes in the system to be
@@ -62,6 +63,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
     # listed before the directory nodes and directory nodes before dma nodes, etc.
     #
     l1_cntrl_nodes = []
+    accel_l1_cntrl_nodes = []
     l2_cntrl_nodes = []
     dir_cntrl_nodes = []
     dma_cntrl_nodes = []
@@ -113,6 +115,53 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         l1_cntrl.responseFromL1Cache =  ruby_system.network.slave
         l1_cntrl.requestToL1Cache =  ruby_system.network.master
         l1_cntrl.responseToL1Cache =  ruby_system.network.master
+
+    # Add accelerators to Ruby interconnection
+    
+    for i in xrange(len(system.datapaths)):
+        #
+        # First create the Ruby objects associated with this cpu
+        #
+        l1i_cache = L1Cache(size = system.datapaths[i].cacheSize,
+                            assoc = options.l1i_assoc,
+                            start_index_bit = block_size_bits,
+                            is_icache = True)
+        accel_l1d_cache = L1Cache(size = system.datapaths[i].cacheSize,
+                            assoc = options.l1d_assoc,
+                            start_index_bit = block_size_bits,
+                            is_icache = False)
+
+        accel_l1_cntrl = L1Cache_Controller(version = i + options.num_cpus,
+                                      L1Icache = l1i_cache,
+                                      L1Dcache = accel_l1d_cache,
+                                      l2_select_num_bits = l2_bits,
+                                      send_evictions = send_evicts(options),
+                                      transitions_per_cycle = options.ports,
+                                      clk_domain=system.datapaths[i].clk_domain,
+                                      ruby_system = ruby_system)
+
+
+        accel_seq = RubySequencer(version = i + options.num_cpus,
+                                icache = l1i_cache,
+                                dcache = accel_l1d_cache,
+                                clk_domain=system.datapaths[i].clk_domain,
+                                ruby_system = ruby_system)
+
+        accel_l1_cntrl.sequencer = accel_seq
+        exec("ruby_system.accel_l1_cntrl%d = accel_l1_cntrl" % (i + options.num_cpus))
+
+        # Add controllers and sequencers to the appropriate lists
+        accel_sequencers.append(accel_seq)
+        accel_l1_cntrl_nodes.append(accel_l1_cntrl)
+
+        # Connect the L1 controllers and the network
+        accel_l1_cntrl.requestFromL1Cache =  ruby_system.network.slave
+        accel_l1_cntrl.responseFromL1Cache =  ruby_system.network.slave
+        accel_l1_cntrl.requestToL1Cache =  ruby_system.network.master
+        accel_l1_cntrl.responseToL1Cache =  ruby_system.network.master
+    
+
+
 
 
     l2_index_start = block_size_bits + l2_bits
@@ -198,6 +247,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
 
 
     all_cntrls = l1_cntrl_nodes + \
+                 accel_l1_cntrl_nodes + \
                  l2_cntrl_nodes + \
                  dir_cntrl_nodes + \
                  dma_cntrl_nodes
@@ -218,6 +268,5 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
 
         all_cntrls = all_cntrls + [io_controller]
 
-
     topology = create_topology(all_cntrls, options)
-    return (cpu_sequencers, dir_cntrl_nodes, topology)
+    return (cpu_sequencers, accel_sequencers,dir_cntrl_nodes, topology)
