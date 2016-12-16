@@ -113,6 +113,8 @@ machine(Directory, "Directory protocol")
     void allocate(Address);
     void deallocate(Address);
     bool isPresent(Address);
+    void dmaReadHit();
+    void dmaReadMiss();
   }
 
   // ** OBJECTS **
@@ -303,6 +305,13 @@ machine(Directory, "Directory protocol")
   }
 
   // Actions
+
+  action(drh_dmaReadHit, "drh", desc="DMA Read Hit") {
+    TBEs.dmaReadHit();
+  }
+  action(drm_dmaReadMiss, "drm", desc="DMA Read Mioss") {
+    TBEs.dmaReadMiss();
+  }
 
   action(a_sendWriteBackAck, "a", desc="Send writeback ack to requestor") {
     peek(requestQueue_in, RequestMsg) {
@@ -560,6 +569,7 @@ machine(Directory, "Directory protocol")
   }
 
   transition(I, DMA_READ, XI_M) {
+    drm_dmaReadMiss;
     qf_queueMemoryFetchRequest;
     i_popIncomingRequestQueue;
   }
@@ -588,6 +598,7 @@ machine(Directory, "Directory protocol")
   }
 
   transition(S, DMA_READ) {
+    drh_dmaReadHit;
     //qf_queueMemoryFetchRequest;
     p_fwdDataToDMA;
     //g_sendInvalidations;  // the DMA will collect the invalidations then send an Unblock Exclusive
@@ -629,6 +640,7 @@ machine(Directory, "Directory protocol")
   }
 
   transition(O, DMA_READ, OD) {
+    drh_dmaReadHit;
     f_forwardRequest;     // this will cause the data to go to DMA directly
     //g_sendInvalidations;  // this will cause acks to be sent to the DMA
     i_popIncomingRequestQueue;
@@ -665,6 +677,7 @@ machine(Directory, "Directory protocol")
 
   // no exclusive unblock will show up to the directory
   transition(M, DMA_READ, MD) {
+    drh_dmaReadHit;
     f_forwardRequest;     // this will cause the data to go to DMA directly
     i_popIncomingRequestQueue;
   }

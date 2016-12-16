@@ -34,6 +34,9 @@
 #include "base/hashmap.hh"
 #include "mem/ruby/common/Address.hh"
 
+extern int DmaReadHit;
+extern int DmaReadMiss;
+
 template<class ENTRY>
 class TBETable
 {
@@ -56,7 +59,12 @@ class TBETable
 
     // Print cache contents
     void print(std::ostream& out) const;
-
+    void dmaReadHit(){
+      DmaReadHit++;
+    }
+    void dmaReadMiss(){
+      DmaReadMiss++;
+    }
   private:
     // Private copy constructor and assignment operator
     TBETable(const TBETable& obj);
