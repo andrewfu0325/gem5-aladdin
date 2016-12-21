@@ -82,6 +82,7 @@ class MemCmd
     {
         InvalidCmd,
         ReadReq,
+        ReadFromDRAMReq,
         ReadResp,
         ReadRespWithInvalidate,
         WriteReq,
@@ -130,6 +131,7 @@ class MemCmd
     enum Attribute
     {
         IsRead,         //!< Data flows from responder to requester
+        IsReadFromDRAM, //!< Data flows from responder to requester
         IsWrite,        //!< Data flows from requester to responder
         IsUpgrade,
         IsInvalidate,
@@ -178,6 +180,7 @@ class MemCmd
   public:
 
     bool isRead() const            { return testCmdAttrib(IsRead); }
+    bool isReadFromDRAM() const    { return testCmdAttrib(IsReadFromDRAM); }
     bool isWrite() const           { return testCmdAttrib(IsWrite); }
     bool isUpgrade() const         { return testCmdAttrib(IsUpgrade); }
     bool isRequest() const         { return testCmdAttrib(IsRequest); }
@@ -473,6 +476,7 @@ class Packet : public Printable
     inline int cmdToIndex() const { return cmd.toInt(); }
 
     bool isRead() const              { return cmd.isRead(); }
+    bool isReadFromDRAM() const      { return cmd.isReadFromDRAM(); }
     bool isWrite() const             { return cmd.isWrite(); }
     bool isUpgrade()  const          { return cmd.isUpgrade(); }
     bool isRequest() const           { return cmd.isRequest(); }

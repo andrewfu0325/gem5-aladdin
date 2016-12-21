@@ -89,7 +89,7 @@ def define_options(parser):
     exec "import %s" % protocol
     eval("%s.define_options(parser)" % protocol)
 
-def setup_memory_controllers(system, ruby, dir_cntrls, options):
+def setup_memory_controllers(system, ruby, dir_cntrls, dma_cntrls, options):
     ruby.block_size_bytes = options.cacheline_size
     ruby.memory_size_bits = 48
     block_size_bits = int(math.log(options.cacheline_size, 2))
@@ -115,10 +115,12 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
         dir_cntrl.directory.numa_high_bit = numa_bit
 
         crossbar = None
-        if len(system.mem_ranges) > 1:
-            crossbar = IOXBar()
-            crossbars.append(crossbar)
-            dir_cntrl.memory = crossbar.slave
+        #if len(system.mem_ranges) > 1:
+        crossbar = IOXBar()
+        crossbars.append(crossbar)
+        dir_cntrl.memory = crossbar.slave
+        for dma_cntrl in dma_cntrls:
+            dma_cntrl.memory = crossbar.slave
 
         for r in system.mem_ranges:
             mem_ctrl = MemConfig.create_mem_ctrl(
@@ -185,7 +187,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = []):
     protocol = buildEnv['PROTOCOL']
     exec "import %s" % protocol
     try:
-        (cpu_sequencers, accel_sequencers, dir_cntrls, topology) = \
+        (cpu_sequencers, accel_sequencers, dir_cntrls, dma_cntrls, topology) = \
              eval("%s.create_system(options, full_system, system, dma_ports,\
                                     ruby)"
                   % protocol)
@@ -218,7 +220,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = []):
         network.enable_fault_model = True
         network.fault_model = FaultModel()
 
-    setup_memory_controllers(system, ruby, dir_cntrls, options)
+    setup_memory_controllers(system, ruby, dir_cntrls, dma_cntrls, options)
 
     # Connect the cpu sequencers and the piobus
     if piobus != None:

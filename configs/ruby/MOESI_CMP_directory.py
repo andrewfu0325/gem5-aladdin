@@ -274,4 +274,4 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         all_cntrls = all_cntrls + [io_controller]
 
     topology = create_topology(all_cntrls, options)
-    return (cpu_sequencers, accel_sequencers,dir_cntrl_nodes, topology)
+    return (cpu_sequencers, accel_sequencers,dir_cntrl_nodes, dma_cntrl_nodes, topology)

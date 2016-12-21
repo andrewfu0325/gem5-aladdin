@@ -249,6 +249,7 @@ DMASequencer::makeRequest(PacketPtr pkt)
     uint8_t* data = (!(pkt->isFlush() | pkt->isInvalidate())?pkt->getPtr<uint8_t>():nullptr);
     int len = pkt->getSize();
     bool write = pkt->isWrite();
+    bool isDRAM = pkt->isReadFromDRAM();
 
     assert(!m_is_busy);  // only support one outstanding DMA request
     m_is_busy = true;
@@ -265,7 +266,8 @@ DMASequencer::makeRequest(PacketPtr pkt)
         std::make_shared<SequencerMsg>(clockEdge());
     msg->getPhysicalAddress() = Address(paddr);
     msg->getLineAddress() = line_address(msg->getPhysicalAddress());
-    msg->getType() = write ? SequencerRequestType_ST : SequencerRequestType_LD;
+    msg->getType() = write ? SequencerRequestType_ST : 
+                     (isDRAM ? SequencerRequestType_LD_DRAM: SequencerRequestType_LD);
     int offset = paddr & m_data_block_mask;
 
     msg->getLen() = (offset + len) <= RubySystem::getBlockSizeBytes() ?

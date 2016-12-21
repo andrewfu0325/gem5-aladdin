@@ -73,6 +73,8 @@ MemCmd::commandInfo[] =
     { 0, InvalidCmd, "InvalidCmd" },
     /* ReadReq */
     { SET3(IsRead, IsRequest, NeedsResponse), ReadResp, "ReadReq" },
+    /* ReadFromDRAMReq */
+    { SET4(IsRead, IsRequest, IsReadFromDRAM, NeedsResponse), ReadResp, "ReadReq" },
     /* ReadResp */
     { SET3(IsRead, IsResponse, HasData), InvalidCmd, "ReadResp" },
     /* ReadRespWithInvalidate */

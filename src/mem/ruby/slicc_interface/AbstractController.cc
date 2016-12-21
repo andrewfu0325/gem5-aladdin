@@ -206,6 +206,8 @@ void
 AbstractController::queueMemoryRead(const MachineID &id, Address addr,
                                     Cycles latency)
 {
+    // DEBUG
+    printf("DEBUG: Machine: %s, Address: %#010x\n", MachineIDToString(id).c_str(), addr.getAddress());
     RequestPtr req = new Request(addr.getAddress(),
                                  RubySystem::getBlockSizeBytes(), 0,
                                  m_masterId);

@@ -140,6 +140,7 @@ enumeration(RubyRequestType, desc="...", default="RubyRequestType_NULL") {
 enumeration(SequencerRequestType, desc="...", default="SequencerRequestType_NULL") {
   Default,    desc="Replace this with access_types passed to the DMA Ruby object";
   LD,          desc="Load";
+  LD_DRAM,desc="Load from DRAM";
   ST,          desc="Store";
   NULL,        desc="Invalid request type";
 }
