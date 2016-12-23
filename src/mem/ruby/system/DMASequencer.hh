@@ -31,8 +31,10 @@
 
 #include <memory>
 #include <ostream>
+#include <unordered_map>
 
 #include "mem/protocol/DMASequencerRequestType.hh"
+#include "mem/ruby/common/Address.hh"
 #include "mem/protocol/RequestStatus.hh"
 #include "mem/ruby/common/DataBlock.hh"
 #include "mem/ruby/network/MessageBuffer.hh"
@@ -46,6 +48,8 @@ class AbstractController;
 
 struct DMARequest
 {
+    DMARequest(uint64_t start_paddr, int len, bool write, int bytes_completed,
+               int bytes_issued, uint8_t *data, PacketPtr pkt);
     uint64_t start_paddr;
     int len;
     bool write;
@@ -98,8 +102,12 @@ class DMASequencer : public MemObject
 
     /* external interface */
     RequestStatus makeRequest(PacketPtr pkt);
-    bool busy() { return m_is_busy;}
-    int outstandingCount() const { return (m_is_busy ? 1 : 0); }
+    // TEST
+    //bool busy() { return m_is_busy;}
+    bool busy() { return m_outstanding_count > 0; }
+    int outstandingCount() const { return m_outstanding_count; }
+    // TEST
+    //int outstandingCount() const { return (m_is_busy ? 1 : 0); }
     bool isDeadlockEventScheduled() const { return false; }
     void descheduleDeadlockEvent() {}
 
@@ -110,13 +118,18 @@ class DMASequencer : public MemObject
     unsigned int drain(DrainManager *dm);
 
     /* SLICC callback */
-    void dataCallback(const DataBlock & dblk);
-    void ackCallback();
+    // TEST
+    //void dataCallback(const DataBlock & dblk);
+    //void ackCallback();
+    void dataCallback(const DataBlock &dblk, const Address &addr);
+    void ackCallback(const Address &addr);
 
     void recordRequestType(DMASequencerRequestType requestType);
 
   private:
-    void issueNext();
+    // TEST
+    //void issueNext();
+    void issueNext(const Address &addr);
     void ruby_hit_callback(PacketPtr pkt);
     void testDrainComplete();
 
@@ -143,9 +156,16 @@ class DMASequencer : public MemObject
     System* system;
 
     bool retry;
-    bool m_is_busy;
+    // TEST
+    //bool m_is_busy;
     uint64_t m_data_block_mask;
-    DMARequest active_request;
+    // DMARequest active_request;
+
+    typedef std::unordered_map<physical_address_t, DMARequest> RequestTable;
+    RequestTable m_RequestTable;
+
+    int m_outstanding_count;
+    int m_max_outstanding_requests;
 };
 
 #endif // __MEM_RUBY_SYSTEM_DMASEQUENCER_HH__

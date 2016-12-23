@@ -235,7 +235,8 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         #
         dma_seq = DMASequencer(version = i,
                                ruby_system = ruby_system,
-                               slave = dma_port)
+                               slave = dma_port,
+                               max_outstanding_requests = options.dma_outstanding_requests)
         
         dma_cntrl = DMA_Controller(version = i,
                                    dma_sequencer = dma_seq,

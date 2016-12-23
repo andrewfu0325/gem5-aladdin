@@ -63,6 +63,7 @@ machine(DMA, "DMA Controller")
 
   structure(TBE, desc="...") {
     Address address, desc="Physical address";
+    State TBEState, desc="Transient state";
     int NumAcks, default="0", desc="Number of Acks pending";
     DataBlock DataBlk, desc="Data";
   }
@@ -77,16 +78,20 @@ machine(DMA, "DMA Controller")
   MessageBuffer mandatoryQueue, ordered="false";
   MessageBuffer triggerQueue, ordered="true";
   TBETable TBEs, template="<DMA_TBE>", constructor="m_number_of_TBEs";
-  State cur_state;
 
   void set_tbe(TBE b);
   void unset_tbe();
 
   State getState(TBE tbe, Address addr) {
-    return cur_state;
+    if(is_valid(tbe)) {
+      return tbe.TBEState;
+    }
+    return State:READY;
   }
   void setState(TBE tbe, Address addr, State state) {
-  cur_state := state;
+    if(is_valid(tbe)) {
+      tbe.TBEState := state;
+    }
   }
 
   AccessPermission getAccessPermission(Address addr) {
@@ -191,7 +196,6 @@ machine(DMA, "DMA Controller")
     }
   }
 
-//  Try
   action(qf_queueMemoryFetchRequest, "qf", desc="Queue off-chip fetch request") {
     peek(dmaRequestQueue_in, SequencerMsg) {
       queueMemoryRead(machineID, address, to_memory_controller_latency);
@@ -214,7 +218,9 @@ machine(DMA, "DMA Controller")
   }
 
   action(a_ackCallback, "a", desc="Notify dma controller that write request completed") {
-      dma_sequencer.ackCallback();
+      // TEST
+      //dma_sequencer.ackCallback();
+      dma_sequencer.ackCallback(address);
   }
 
   action(o_checkForCompletion, "o", desc="Check if we have received all the messages required for completion") {
@@ -253,7 +259,6 @@ machine(DMA, "DMA Controller")
     dmaResponseQueue_in.dequeue();
   }
 
-  // Try
   action(p_popDRAMResponseQueue, "\pm", desc="Pop request queue") {
     memQueue_in.dequeue();
   }
@@ -269,7 +274,6 @@ machine(DMA, "DMA Controller")
     }
   }
 
-  // Try
   action(t_updateTBEDataForDRAM, "tm", desc="Update TBE Data for DRAM") {
     peek(memQueue_in, MemoryMsg) {
       assert(is_valid(tbe));
@@ -279,7 +283,7 @@ machine(DMA, "DMA Controller")
 
   action(d_dataCallbackFromTBE, "/d", desc="data callback with data from TBE") {
     assert(is_valid(tbe));
-    dma_sequencer.dataCallback(tbe.DataBlk);
+    dma_sequencer.dataCallback(tbe.DataBlk, address);
   }
 
   action(v_allocateTBE, "v", desc="Allocate TBE entry") {

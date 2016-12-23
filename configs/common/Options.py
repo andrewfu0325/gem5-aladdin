@@ -138,6 +138,9 @@ def addCommonOptions(parser):
     parser.add_option("--cacheline_size", type="int", default=64)
     parser.add_option("--xbar_width", type="int", default=8)
 
+    # DMA options
+    parser.add_option("--dma_outstanding_requests", type="int", default=16)
+
     # Aladdin Options
     parser.add_option("--accel_cfg_file", default=None,
                       help="Aladdin accelerator configuration file.")

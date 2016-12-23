@@ -162,8 +162,11 @@ structure (WireBuffer, inport="yes", outport="yes", external = "yes") {
 }
 
 structure (DMASequencer, external = "yes") {
-  void ackCallback();
-  void dataCallback(DataBlock);
+// TEST
+//  void ackCallback();
+//  void dataCallback(DataBlock);
+  void ackCallback(Address);
+  void dataCallback(DataBlock, Address);
   void recordRequestType(CacheRequestType);
 }
 

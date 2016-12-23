@@ -70,6 +70,7 @@ class RubySequencer(RubyPort):
 class DMASequencer(MemObject):
     type = 'DMASequencer'
     cxx_header = "mem/ruby/system/DMASequencer.hh"
+    max_outstanding_requests = Param.Int(16, "max outstanding requests")
 
     version = Param.Int(0, "")
     slave = SlavePort("Device slave port")
