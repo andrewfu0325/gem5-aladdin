@@ -97,7 +97,8 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                                       send_evictions = send_evicts(options),
                                       transitions_per_cycle = options.ports,
                                       clk_domain=system.cpu[i].clk_domain,
-                                      ruby_system = ruby_system)
+                                      ruby_system = ruby_system,
+                                      number_of_TBEs = options.l1_mshrs)
 
         cpu_seq = RubySequencer(version = i,
                                 icache = l1i_cache,
@@ -182,7 +183,8 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         l2_cntrl = L2Cache_Controller(version = i,
                                       L2cache = l2_cache,
                                       transitions_per_cycle = options.ports,
-                                      ruby_system = ruby_system)
+                                      ruby_system = ruby_system,
+                                      number_of_TBEs = options.l2_mshrs)
         
         exec("ruby_system.l2_cntrl%d = l2_cntrl" % i)
         l2_cntrl_nodes.append(l2_cntrl)
@@ -208,7 +210,6 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
     ruby_system.memctrl_clk_domain = DerivedClockDomain(
                                           clk_domain=ruby_system.clk_domain,
                                           clk_divider=3)
-
     for i in xrange(options.num_dirs):
         dir_size = MemorySize('0B')
         dir_size.value = mem_module_size
@@ -216,8 +217,16 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         dir_cntrl = Directory_Controller(version = i,
                                          directory = RubyDirectoryMemory(
                                              version = i, size = dir_size),
+																				 probeFilter = RubyCache(
+																        								dataAccessLatency = options.dir_latency,
+																												dataArrayBanks = options.dir_banks,
+                                                        latency = 1, # dummy
+				                                                size = "2MB",
+        			                                          assoc = options.dir_assoc,
+                      			                            resourceStalls = True),
                                          transitions_per_cycle = options.ports,
-                                         ruby_system = ruby_system)
+                                         ruby_system = ruby_system,
+                                         number_of_TBEs = options.dir_mshrs)
 
         exec("ruby_system.dir_cntrl%d = dir_cntrl" % i)
         dir_cntrl_nodes.append(dir_cntrl)
@@ -241,7 +250,8 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         dma_cntrl = DMA_Controller(version = i,
                                    dma_sequencer = dma_seq,
                                    transitions_per_cycle = options.ports,
-                                   ruby_system = ruby_system)
+                                   ruby_system = ruby_system,
+                                   number_of_TBEs = options.dma_outstanding_requests)
 
         exec("ruby_system.dma_cntrl%d = dma_cntrl" % i)
         dma_cntrl_nodes.append(dma_cntrl)

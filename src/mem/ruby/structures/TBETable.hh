@@ -60,10 +60,13 @@ class TBETable
     // Print cache contents
     void print(std::ostream& out) const;
     void dmaReadHit(){
-      DmaReadHit++;
+        DmaReadHit++;
     }
     void dmaReadMiss(){
-      DmaReadMiss++;
+        DmaReadMiss++;
+    }
+    void outstandingReq(){
+        printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
     }
   private:
     // Private copy constructor and assignment operator
@@ -99,6 +102,8 @@ template<class ENTRY>
 inline void
 TBETable<ENTRY>::allocate(const Address& address)
 {
+    printf("Allocated Address: %#8x\n", address.getAddress());
+    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
     assert(!isPresent(address));
     assert(m_map.size() < m_number_of_TBEs);
     m_map[address] = ENTRY();
@@ -108,6 +113,8 @@ template<class ENTRY>
 inline void
 TBETable<ENTRY>::deallocate(const Address& address)
 {
+    printf("Deallocated Address: %#8x\n", address.getAddress());
+    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
     assert(isPresent(address));
     assert(m_map.size() > 0);
     m_map.erase(address);

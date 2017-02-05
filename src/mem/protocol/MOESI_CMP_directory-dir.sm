@@ -28,6 +28,7 @@
 
 machine(Directory, "Directory protocol")
 :  DirectoryMemory * directory;
+   CacheMemory * probeFilter;
    Cycles directory_latency := 6;
    Cycles to_memory_controller_latency := 1;
 
@@ -91,6 +92,11 @@ machine(Directory, "Directory protocol")
     Data,          desc="Data to directory";
   }
 
+  enumeration(RequestType, desc="Type of request for each transition") {
+    PfRead,    desc="Probe filter read";
+    PfWrite,   desc="Probe filter write";
+  }
+
   // TYPES
 
   // DirectoryEntry
@@ -115,6 +121,7 @@ machine(Directory, "Directory protocol")
     bool isPresent(Address);
     void dmaReadHit();
     void dmaReadMiss();
+    void outstandingReq();
   }
 
   // ** OBJECTS **
@@ -220,6 +227,26 @@ machine(Directory, "Directory protocol")
       }
     }
     return false;
+  }
+
+  void recordRequestType(RequestType type, Address addr) {
+    // NOTE: These are really more like tag reads, but since CacheMemory
+    // tracks b/w based on data array accesses use that.
+    if (type == RequestType:PfRead) {
+      probeFilter.recordRequestType(CacheRequestType:DataArrayRead);
+    } else if (type == RequestType:PfWrite) {
+      probeFilter.recordRequestType(CacheRequestType:DataArrayWrite);
+    } else {
+      error("Bad request type passed to recordRequestType");
+    }
+  }
+
+  bool checkResourceAvailable(RequestType type, Address addr) {
+    if (type == RequestType:PfRead || type == RequestType:PfWrite) {
+      return probeFilter.checkResourceAvailable(CacheResourceType:DataArray, addr);
+    } else {
+      error("Bad request type passed to checkResourceAvailable");
+    }
   }
 
 
@@ -546,6 +573,7 @@ machine(Directory, "Directory protocol")
   }
 
   action(v_allocateTBE, "v", desc="Allocate TBE entry") {
+    check_allocate(TBEs);
     peek (requestQueue_in, RequestMsg) {
       TBEs.allocate(address);
       set_tbe(TBEs[address]);
@@ -561,51 +589,65 @@ machine(Directory, "Directory protocol")
     unset_tbe();
   }
 
+  action(outstandingReq, "oq", desc="") {
+    TBEs.outstandingReq();
+  }
+
 
   // TRANSITIONS
   transition(I, GETX, MM) {
+    v_allocateTBE;
     qf_queueMemoryFetchRequest;
     i_popIncomingRequestQueue;
   }
 
-  transition(I, DMA_READ, XI_M) {
+  transition(I, DMA_READ, XI_M) {PfRead} {
+    v_allocateTBE;
     drm_dmaReadMiss;
+    outstandingReq;
     qf_queueMemoryFetchRequest;
     i_popIncomingRequestQueue;
   }
 
-  transition(I, DMA_WRITE, XI_U) {
+  transition(I, DMA_WRITE, XI_U) {PfWrite} {
+    v_allocateTBE;
     qw_queueMemoryWBRequest2;
     a_sendDMAAck;  // ack count may be zero
     i_popIncomingRequestQueue;
   }
 
   transition(XI_M, Memory_Data, I) {
+    w_deallocateTBE;
     d_sendDataMsg;  // ack count may be zero
     q_popMemQueue;
   }
 
   transition(XI_U, Exclusive_Unblock, I) {
+    w_deallocateTBE;
     cc_clearSharers;
     c_clearOwner;
     j_popIncomingUnblockQueue;
   }
 
   transition(S, GETX, MM) {
+    v_allocateTBE;
     qf_queueMemoryFetchRequest;
     g_sendInvalidations;
     i_popIncomingRequestQueue;
   }
 
-  transition(S, DMA_READ) {
+  transition(S, DMA_READ) {PfRead} {
     drh_dmaReadHit;
+    outstandingReq;
     //qf_queueMemoryFetchRequest;
     p_fwdDataToDMA;
     //g_sendInvalidations;  // the DMA will collect the invalidations then send an Unblock Exclusive
+    // Test
     i_popIncomingRequestQueue;
   }
 
-  transition(S, DMA_WRITE, XI_U) {
+  transition(S, DMA_WRITE, XI_U) {PfWrite} {
+    v_allocateTBE;
     qw_queueMemoryWBRequest2;
     a_sendDMAAck;  // ack count may be zero
     g_sendInvalidations;  // the DMA will collect invalidations
@@ -613,11 +655,13 @@ machine(Directory, "Directory protocol")
   }
 
   transition(I, GETS, IS) {
+    v_allocateTBE;
     qf_queueMemoryFetchRequest;
     i_popIncomingRequestQueue;
   }
 
   transition({S, SS}, GETS, SS) {
+    v_allocateTBE;
     qf_queueMemoryFetchRequest;
     n_incrementOutstanding;
     i_popIncomingRequestQueue;
@@ -634,12 +678,14 @@ machine(Directory, "Directory protocol")
   }
 
   transition(O, GETX, MM) {
+    v_allocateTBE;
     f_forwardRequest;
     g_sendInvalidations;
     i_popIncomingRequestQueue;
   }
 
-  transition(O, DMA_READ, OD) {
+  transition(O, DMA_READ, OD) {PfRead} {
+    v_allocateTBE;
     drh_dmaReadHit;
     f_forwardRequest;     // this will cause the data to go to DMA directly
     //g_sendInvalidations;  // this will cause acks to be sent to the DMA
@@ -647,72 +693,83 @@ machine(Directory, "Directory protocol")
   }
 
   transition(OD, DMA_ACK, O) {
+    w_deallocateTBE;
     j_popIncomingUnblockQueue;
   }
 
-  transition({O,M}, DMA_WRITE, OI_D) {
+  transition({O,M}, DMA_WRITE, OI_D) {PfWrite} {
+    v_allocateTBE;
     f_forwardRequestDirIsRequestor;    // need the modified data before we can proceed
     g_sendInvalidations;               // these go to the DMA Controller
-    v_allocateTBE;
     i_popIncomingRequestQueue;
   }
 
   transition(OI_D, Data, XI_U) {
     qw_queueMemoryWBRequestFromMessageAndTBE;
     a_sendDMAAck2;  // ack count may be zero
-    w_deallocateTBE;
+    //w_deallocateTBE;
     j_popIncomingUnblockQueue;
   }
 
   transition({O, OO}, GETS, OO) {
+    v_allocateTBE;
     f_forwardRequest;
     n_incrementOutstanding;
     i_popIncomingRequestQueue;
   }
 
   transition(M, GETX, MM) {
+    v_allocateTBE;
     f_forwardRequest;
     i_popIncomingRequestQueue;
   }
 
   // no exclusive unblock will show up to the directory
-  transition(M, DMA_READ, MD) {
+  transition(M, DMA_READ, MD) {PfRead} {
+    v_allocateTBE;
     drh_dmaReadHit;
     f_forwardRequest;     // this will cause the data to go to DMA directly
     i_popIncomingRequestQueue;
   }
 
   transition(MD, DMA_ACK, M) {
+    w_deallocateTBE;
     j_popIncomingUnblockQueue;
   }
 
   transition(M, GETS, MO) {
+    v_allocateTBE;
     f_forwardRequest;
     i_popIncomingRequestQueue;
   }
 
   transition(M, PUTX, MI) {
+    v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
 
   // happens if M->O transition happens on-chip
   transition(M, PUTO, MI) {
+    v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
 
   transition(M, PUTO_SHARERS, MIS) {
+    v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
 
   transition(O, PUTO, OS) {
+    v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
 
   transition(O, PUTO_SHARERS, OSS) {
+    v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
@@ -723,12 +780,14 @@ machine(Directory, "Directory protocol")
   }
 
   transition({MM, MO}, Exclusive_Unblock, M) {
+    w_deallocateTBE;
     cc_clearSharers;
     e_ownerIsUnblocker;
     j_popIncomingUnblockQueue;
   }
 
   transition(MO, Unblock, O) {
+    w_deallocateTBE;
     m_addUnlockerToSharers;
     j_popIncomingUnblockQueue;
   }
@@ -742,11 +801,13 @@ machine(Directory, "Directory protocol")
   }
 
   transition(IS, Unblock, S) {
+    w_deallocateTBE;
     m_addUnlockerToSharers;
     j_popIncomingUnblockQueue;
   }
 
   transition(IS, Exclusive_Unblock, M) {
+    w_deallocateTBE;
     cc_clearSharers;
     e_ownerIsUnblocker;
     j_popIncomingUnblockQueue;
@@ -759,6 +820,7 @@ machine(Directory, "Directory protocol")
   }
 
   transition(SS, Last_Unblock, S) {
+    w_deallocateTBE;
     m_addUnlockerToSharers;
     o_decrementOutstanding;
     j_popIncomingUnblockQueue;
@@ -771,12 +833,14 @@ machine(Directory, "Directory protocol")
   }
 
   transition(OO, Last_Unblock, O) {
+    w_deallocateTBE;
     m_addUnlockerToSharers;
     o_decrementOutstanding;
     j_popIncomingUnblockQueue;
   }
 
   transition(MI, Dirty_Writeback, I) {
+    w_deallocateTBE;
     c_clearOwner;
     cc_clearSharers;
     qw_queueMemoryWBRequest;
@@ -784,45 +848,53 @@ machine(Directory, "Directory protocol")
   }
 
   transition(MIS, Dirty_Writeback, S) {
+    w_deallocateTBE;
     c_moveOwnerToSharer;
     qw_queueMemoryWBRequest;
     j_popIncomingUnblockQueue;
   }
 
   transition(MIS, Clean_Writeback, S) {
+    w_deallocateTBE;
     c_moveOwnerToSharer;
     j_popIncomingUnblockQueue;
   }
 
   transition(OS, Dirty_Writeback, S) {
+    w_deallocateTBE;
     c_clearOwner;
     qw_queueMemoryWBRequest;
     j_popIncomingUnblockQueue;
   }
 
   transition(OSS, Dirty_Writeback, S) {
+    w_deallocateTBE;
     c_moveOwnerToSharer;
     qw_queueMemoryWBRequest;
     j_popIncomingUnblockQueue;
   }
 
   transition(OSS, Clean_Writeback, S) {
+    w_deallocateTBE;
     c_moveOwnerToSharer;
     j_popIncomingUnblockQueue;
   }
 
   transition(MI, Clean_Writeback, I) {
+    w_deallocateTBE;
     c_clearOwner;
     cc_clearSharers;
     j_popIncomingUnblockQueue;
   }
 
   transition(OS, Clean_Writeback, S) {
+    w_deallocateTBE;
     c_clearOwner;
     j_popIncomingUnblockQueue;
   }
 
   transition({MI, MIS}, Unblock, M) {
+    w_deallocateTBE;
     j_popIncomingUnblockQueue;
   }
 
