@@ -313,9 +313,9 @@ if options.ruby:
             system.cpu[i].interrupts.int_slave = ruby_port.master
             system.cpu[i].itb.walker.port = ruby_port.slave
             system.cpu[i].dtb.walker.port = ruby_port.slave
-    for datapath in system.datapaths:
+    for i in xrange(len(system.datapaths)):
         ruby_port = system.ruby._accel_ruby_ports[i]
-        datapath.cache_port = ruby_port.slave
+        system.datapaths[i].cache_port = ruby_port.slave
 else:
     system.membus = SystemXBar(is_perfect_bus=options.is_perfect_bus,
                                width=options.xbar_width)

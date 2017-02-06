@@ -72,13 +72,19 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
     # Must create the individual controllers before the network to ensure the
     # controller constructors are called before the network constructor
     #
-    l2_bits = int(math.log(options.num_l2caches, 2))
+    #l2_bits = int(math.log(options.num_l2caches, 2))
     block_size_bits = int(math.log(options.cacheline_size, 2))
+    print options.num_cpus / 4 + (1 if options.num_cpus % 4 else 0)
+    # Add one L2 cache for every 4-additional cores
+    assert(options.num_l2caches == options.num_cpus / 4 + (1 if options.num_cpus % 4 else 0))
 
     for i in xrange(options.num_cpus):
         #
         # First create the Ruby objects associated with this cpu
         #
+
+        # Group 4 cores into one clutser
+        ClusterNum = i / 4;
         l1i_cache = L1Cache(size = options.l1i_size,
                             assoc = options.l1i_assoc,
                             start_index_bit = block_size_bits,
@@ -93,7 +99,8 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         l1_cntrl = L1Cache_Controller(version = i,
                                       L1Icache = l1i_cache,
                                       L1Dcache = l1d_cache,
-                                      l2_select_num_bits = l2_bits,
+                                      l2_select_num_bits = 0,
+                                      ClusterNum = ClusterNum,
                                       send_evictions = send_evicts(options),
                                       transitions_per_cycle = options.ports,
                                       clk_domain=system.cpu[i].clk_domain,
@@ -125,6 +132,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         #
         # First create the Ruby objects associated with this cpu
         #
+        ClusterNum = i / 4;
         l1i_cache = L1Cache(size = system.datapaths[i].cacheSize,
                             assoc = options.l1i_assoc,
                             start_index_bit = block_size_bits,
@@ -139,12 +147,13 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         accel_l1_cntrl = L1Cache_Controller(version = i + options.num_cpus,
                                       L1Icache = l1i_cache,
                                       L1Dcache = accel_l1d_cache,
-                                      l2_select_num_bits = l2_bits,
+                                      l2_select_num_bits = 0,
+                                      ClusterNum = ClusterNum,
                                       send_evictions = send_evicts(options),
                                       transitions_per_cycle = options.ports,
                                       clk_domain=system.datapaths[i].clk_domain,
-                                      ruby_system = ruby_system)
-
+                                      ruby_system = ruby_system,
+                                      number_of_TBEs = options.l1_mshrs)
 
         accel_seq = RubySequencer(version = i + options.num_cpus,
                                 icache = l1i_cache,
@@ -169,8 +178,11 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
 
 
 
-    l2_index_start = block_size_bits + l2_bits
+    #l2_index_start = block_size_bits + l2_bits
+    l2_index_start = block_size_bits
 
+    print "# of CPUs", options.num_cpus
+    print "# of L2 caches", options.num_l2caches
     for i in xrange(options.num_l2caches):
         #
         # First create the Ruby objects associated with this cpu
@@ -218,12 +230,12 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                                          directory = RubyDirectoryMemory(
                                              version = i, size = dir_size),
 																				 probeFilter = RubyCache(
-																        								dataAccessLatency = options.dir_latency,
-																												dataArrayBanks = options.dir_banks,
-                                                        latency = 1, # dummy
-				                                                size = "2MB",
-        			                                          assoc = options.dir_assoc,
-                      			                            resourceStalls = True),
+                                             dataAccessLatency = options.dir_latency,
+                                             dataArrayBanks = options.dir_banks,
+                                             latency = 1, # dummy
+				                                     size = "2MB",
+        			                               assoc = options.dir_assoc,
+                      			                 resourceStalls = True),
                                          transitions_per_cycle = options.ports,
                                          ruby_system = ruby_system,
                                          number_of_TBEs = options.dir_mshrs)

@@ -31,6 +31,7 @@ machine(L1Cache, "Directory protocol")
    CacheMemory * L1Icache;
    CacheMemory * L1Dcache;
    int l2_select_num_bits;
+   int ClusterNum;
    Cycles request_latency := 2;
    Cycles use_timeout_latency := 50;
    bool send_evictions;
@@ -435,7 +436,7 @@ machine(L1Cache, "Directory protocol")
         out_msg.Requestor := machineID;
         out_msg.RequestorMachine := MachineType:L1Cache;
         out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
         out_msg.MessageSize := MessageSizeType:Request_Control;
         out_msg.AccessMode := in_msg.AccessMode;
         out_msg.Prefetch := in_msg.Prefetch;
@@ -451,7 +452,7 @@ machine(L1Cache, "Directory protocol")
         out_msg.Requestor := machineID;
         out_msg.RequestorMachine := MachineType:L1Cache;
         out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
         out_msg.MessageSize := MessageSizeType:Request_Control;
         out_msg.AccessMode := in_msg.AccessMode;
         out_msg.Prefetch := in_msg.Prefetch;
@@ -466,7 +467,7 @@ machine(L1Cache, "Directory protocol")
       out_msg.Requestor := machineID;
       out_msg.RequestorMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
       out_msg.MessageSize := MessageSizeType:Writeback_Control;
     }
   }
@@ -478,7 +479,7 @@ machine(L1Cache, "Directory protocol")
       out_msg.Requestor := machineID;
       out_msg.RequestorMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
       out_msg.MessageSize := MessageSizeType:Writeback_Control;
     }
   }
@@ -490,7 +491,7 @@ machine(L1Cache, "Directory protocol")
       out_msg.Requestor := machineID;
       out_msg.RequestorMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
       out_msg.MessageSize := MessageSizeType:Writeback_Control;
     }
   }
@@ -505,7 +506,7 @@ machine(L1Cache, "Directory protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
           out_msg.DataBlk := cache_entry.DataBlk;
           // out_msg.Dirty := cache_entry.Dirty;
           out_msg.Dirty := false;
@@ -540,7 +541,7 @@ machine(L1Cache, "Directory protocol")
       out_msg.Sender := machineID;
       out_msg.SenderMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
       out_msg.DataBlk := cache_entry.DataBlk;
       out_msg.Dirty := cache_entry.Dirty;
       out_msg.Acks := 0; // irrelevant
@@ -558,7 +559,7 @@ machine(L1Cache, "Directory protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
           out_msg.DataBlk := cache_entry.DataBlk;
           out_msg.Dirty := cache_entry.Dirty;
           out_msg.Acks := in_msg.Acks;
@@ -603,7 +604,7 @@ machine(L1Cache, "Directory protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
           out_msg.Acks := 0 - 1; // -1
           out_msg.MessageSize := MessageSizeType:Response_Control;
         }
@@ -618,7 +619,7 @@ machine(L1Cache, "Directory protocol")
       out_msg.Sender := machineID;
       out_msg.SenderMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
       out_msg.MessageSize := MessageSizeType:Unblock_Control;
     }
   }
@@ -630,7 +631,7 @@ machine(L1Cache, "Directory protocol")
       out_msg.Sender := machineID;
       out_msg.SenderMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
       out_msg.MessageSize := MessageSizeType:Unblock_Control;
     }
   }
@@ -727,7 +728,7 @@ machine(L1Cache, "Directory protocol")
         out_msg.Sender := machineID;
         out_msg.SenderMachine := MachineType:L1Cache;
         out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
         out_msg.Dirty := false;
         out_msg.Acks := 1;
         out_msg.MessageSize := MessageSizeType:Response_Control;
@@ -760,7 +761,7 @@ machine(L1Cache, "Directory protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
           out_msg.DataBlk := tbe.DataBlk;
           // out_msg.Dirty := tbe.Dirty;
           out_msg.Dirty := false;
@@ -794,7 +795,7 @@ machine(L1Cache, "Directory protocol")
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
           out_msg.DataBlk := tbe.DataBlk;
           out_msg.Dirty := tbe.Dirty;
           out_msg.Acks := in_msg.Acks;
@@ -812,7 +813,7 @@ machine(L1Cache, "Directory protocol")
       out_msg.Sender := machineID;
       out_msg.SenderMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToRange(address, MachineType:L2Cache,
-              l2_select_low_bit, l2_select_num_bits, intToID(0)));
+              l2_select_low_bit, l2_select_num_bits, intToID(ClusterNum)));
       out_msg.Dirty := tbe.Dirty;
       if (tbe.Dirty) {
         out_msg.Type := CoherenceResponseType:WRITEBACK_DIRTY_DATA;
