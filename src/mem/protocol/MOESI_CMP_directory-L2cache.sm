@@ -170,6 +170,13 @@ machine(L2Cache, "Token protocol")
 
   }
 
+  enumeration(RequestType, desc="Type of request for each transition") {
+    DataArrayRead,    desc="L2 Data array read";
+    DataArrayWrite,   desc="L2 Data array write";
+    TagArrayRead,     desc="L2 Tag array read";
+    TagArrayWrite,    desc="L2 Tag array write";
+  }
+
   // TYPES
 
   // CacheEntry
@@ -234,6 +241,35 @@ machine(L2Cache, "Token protocol")
   Entry getCacheEntry(Address address), return_by_pointer="yes" {
     return static_cast(Entry, "pointer", L2cache[address]);
   }
+
+  void recordRequestType(RequestType type, Address addr) {
+    if (type == RequestType:DataArrayRead) {
+      L2cache.recordRequestType(CacheRequestType:DataArrayRead);
+    } else if (type == RequestType:DataArrayWrite) {
+      L2cache.recordRequestType(CacheRequestType:DataArrayWrite);
+    } else if (type == RequestType:TagArrayRead) {
+      L2cache.recordRequestType(CacheRequestType:TagArrayRead);
+    } else if (type == RequestType:TagArrayWrite) {
+      L2cache.recordRequestType(CacheRequestType:TagArrayWrite);
+    } else {
+      error("Bad request type passed to recordRequestType");
+    }
+  }
+
+  bool checkResourceAvailable(RequestType type, Address addr) {
+    if (type == RequestType:DataArrayRead) {
+      return L2cache.checkResourceAvailable(CacheResourceType:DataArray, addr);
+    } else if (type == RequestType:DataArrayWrite) {
+      return L2cache.checkResourceAvailable(CacheResourceType:DataArray, addr);
+    } else if (type == RequestType:TagArrayRead) {
+      return L2cache.checkResourceAvailable(CacheResourceType:TagArray, addr);
+    } else if (type == RequestType:TagArrayWrite) {
+      return L2cache.checkResourceAvailable(CacheResourceType:TagArray, addr);
+    } else {
+      error("Bad request type passed to checkResourceAvailable");
+    }
+  }
+
 
   bool isDirTagPresent(Address addr) {
     return (localDirectory.isTagPresent(addr) );
@@ -1625,21 +1661,21 @@ machine(L2Cache, "Token protocol")
 
   // FORWARDED REQUESTS
 
-  transition({ILO, ILX, ILOX}, Fwd_GETS, IFGS) {
+  transition({ILO, ILX, ILOX}, Fwd_GETS, IFGS) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdSID;
     j_forwardGlobalRequestToLocalOwner;
     m_popRequestQueue;
   }
 
-  transition({ILOS, ILOSX}, Fwd_GETS, ISFGS) {
+  transition({ILOS, ILOSX}, Fwd_GETS, ISFGS) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdSID;
     j_forwardGlobalRequestToLocalOwner;
     m_popRequestQueue;
   }
 
-  transition(ILOS, Fwd_DMA, ILOSD) {
+  transition(ILOS, Fwd_DMA, ILOSD) {TagArrayRead} {
     i_allocateTBE;
     jd_forwardDmaRequestToLocalOwner;
     m_popRequestQueue;
@@ -1651,7 +1687,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILOSX, Fwd_DMA, ILOSXD) {
+  transition(ILOSX, Fwd_DMA, ILOSXD) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdSID;
     jd_forwardDmaRequestToLocalOwner;
@@ -1664,7 +1700,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILO, Fwd_DMA, ILOD) {
+  transition(ILO, Fwd_DMA, ILOD) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdSID;
     jd_forwardDmaRequestToLocalOwner;
@@ -1677,7 +1713,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILX, Fwd_DMA, ILXD) {
+  transition(ILX, Fwd_DMA, ILXD) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdSID;
     jd_forwardDmaRequestToLocalOwner;
@@ -1690,7 +1726,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILOX, Fwd_DMA, ILOXD) {
+  transition(ILOX, Fwd_DMA, ILOXD) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdSID;
     jd_forwardDmaRequestToLocalOwner;
@@ -1710,21 +1746,21 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(IFGS, Data, ILO) {
+  transition(IFGS, Data, ILO) {TagArrayWrite} {
     i_copyDataToTBE;
     c_sendDataFromTBEToFwdGETS;
     s_deallocateTBE;
     n_popResponseQueue;
   }
 
-  transition(ISFGS, Data, ILOS) {
+  transition(ISFGS, Data, ILOS) {TagArrayWrite} {
     i_copyDataToTBE;
     c_sendDataFromTBEToFwdGETS;
     s_deallocateTBE;
     n_popResponseQueue;
   }
 
-  transition(IFGS, Data_Exclusive, I) {
+  transition(IFGS, Data_Exclusive, I) {TagArrayWrite} {
     i_copyDataToTBE;
     c_sendExclusiveDataFromTBEToFwdGETS;
     gg_clearLocalSharers;
@@ -1733,14 +1769,14 @@ machine(L2Cache, "Token protocol")
   }
 
 
-  transition({ILX, ILO, ILOX}, Fwd_GETX, IFGX) {
+  transition({ILX, ILO, ILOX}, Fwd_GETX, IFGX) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdXID;
     j_forwardGlobalRequestToLocalOwner;
     m_popRequestQueue;
   }
 
-  transition(IFGX, {Data_Exclusive, Data}, I) {
+  transition(IFGX, {Data_Exclusive, Data}, I) {TagArrayWrite} {
     i_copyDataToTBE;
     c_sendDataFromTBEToFwdGETX;
     gg_clearLocalSharers;
@@ -1748,7 +1784,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition({ILOSX, ILOS}, Fwd_GETX, IFGXX) {
+  transition({ILOSX, ILOS}, Fwd_GETX, IFGXX) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdXID;
     j_forwardGlobalRequestToLocalOwner;
@@ -1771,7 +1807,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(IFGXX, All_Acks, I) {
+  transition(IFGXX, All_Acks, I) {TagArrayWrite} {
     c_sendDataFromTBEToFwdGETX;
     gg_clearLocalSharers;
     s_deallocateTBE;
@@ -1780,37 +1816,37 @@ machine(L2Cache, "Token protocol")
 
 
   // transition({O, OX}, Fwd_GETX, I) {
-  transition(O, Fwd_GETX, I) {
+  transition(O, Fwd_GETX, I) {TagArrayRead, TagArrayWrite, DataArrayRead} {
     dd_sendDataToFwdGETX;
     y_copyCacheStateToDir;
     rr_deallocateL2CacheBlock;
     m_popRequestQueue;
   }
 
-  transition({O, OLS}, Fwd_GETS) {
+  transition({O, OLS}, Fwd_GETS) {TagArrayRead, DataArrayRead} {
     dd_sendDataToFwdGETS;
     m_popRequestQueue;
   }
 
-  transition({O, OLS}, Fwd_DMA) {
+  transition({O, OLS}, Fwd_DMA) {TagArrayRead, DataArrayRead} {
     dd_sendDataToFwdGETS;
     da_sendDmaAckUnblock;
     m_popRequestQueue;
   }
 
-  // transition({OLSX, OX}, Fwd_GETS, O) {
+  // transition({OLSX, OX}, Fwd_GETS, O) {TagArrayRead, TagArrayWrite, DataArrayRead} {
   transition(OLSX, Fwd_GETS, OLS) {
     dd_sendDataToFwdGETS;
     m_popRequestQueue;
   }
 
-  transition(OLSX, Fwd_DMA) {
+  transition(OLSX, Fwd_DMA) {TagArrayRead, DataArrayRead} {
     dd_sendDataToFwdGETS;
     da_sendDmaAckUnblock;
     m_popRequestQueue;
   }
 
-  transition(M, Fwd_GETX, I) {
+  transition(M, Fwd_GETX, I) {TagArrayRead, TagArrayWrite, DataArrayRead} {
     dd_sendDataToFwdGETX;
     rr_deallocateL2CacheBlock;
     m_popRequestQueue;
@@ -1823,19 +1859,19 @@ machine(L2Cache, "Token protocol")
   //   m_popRequestQueue;
   // }
 
-  transition(M, Fwd_GETS, I) {
+  transition(M, Fwd_GETS, I) {TagArrayRead, TagArrayWrite, DataArrayRead}{
      dd_sendExclusiveDataToFwdGETS;
      rr_deallocateL2CacheBlock;
      m_popRequestQueue;
   }
 
-  transition(M, Fwd_DMA) {
+  transition(M, Fwd_DMA) {TagArrayRead, DataArrayRead} {
      dd_sendExclusiveDataToFwdGETS;
      da_sendDmaAckUnblock;
      m_popRequestQueue;
   }
 
-  transition({OLS, OLSX}, Fwd_GETX, OLSF) {
+  transition({OLS, OLSX}, Fwd_GETX, OLSF) {TagArrayRead, DataArrayRead} {
     i_allocateTBE;
     t_recordFwdXID;
     ee_sendLocalInv;
@@ -1866,7 +1902,7 @@ machine(L2Cache, "Token protocol")
     m_popRequestQueue;
   }
 
-  transition({I,NP}, Inv) {
+  transition({I,NP}, Inv) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdXID;
     e_sendAck;
@@ -1876,7 +1912,7 @@ machine(L2Cache, "Token protocol")
 
   // NEED INV for S state
 
-  transition({ILS, ILO, ILX}, Inv, II) {
+  transition({ILS, ILO, ILX}, Inv, II) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdXID;
     ee_sendLocalInv;
@@ -1884,7 +1920,7 @@ machine(L2Cache, "Token protocol")
     m_popRequestQueue;
   }
 
-  transition(SLS, Inv, II) {
+  transition(SLS, Inv, II) {TagArrayRead} {
     i_allocateTBE;
     t_recordFwdXID;
     ee_sendLocalInv;
@@ -1904,7 +1940,7 @@ machine(L2Cache, "Token protocol")
     n_popTriggerQueue;
   }
 
-  transition(S, Inv, I) {
+  transition(S, Inv, I) {TagArrayRead, TagArrayWrite, DataArrayRead} {
     i_allocateTBE;
     t_recordFwdXID;
     e_sendAck;
@@ -1916,7 +1952,7 @@ machine(L2Cache, "Token protocol")
 
   // LOCAL REQUESTS SATISFIED LOCALLY
 
-  transition(OLSX, L1_GETX, IFLOX) {
+  transition(OLSX, L1_GETX, IFLOX) {TagArrayRead, DataArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     // count number of INVs needed that doesn't include requestor
@@ -1931,13 +1967,13 @@ machine(L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLOX, Exclusive_Unblock, ILX) {
+  transition(IFLOX, Exclusive_Unblock, ILX) {TagArrayWrite} {
     g_recordLocalExclusive;
     s_deallocateTBE;
     n_popResponseQueue;
   }
 
-  transition(OLSX, L1_GETS, OLSXS) {
+  transition(OLSX, L1_GETS, OLSXS) {TagArrayRead, DataArrayRead} {
     d_sendDataToL1GETS;
     r_setMRU;
     uu_profileHit;
@@ -1958,75 +1994,75 @@ machine(L2Cache, "Token protocol")
   }
 
 
-  transition(ILX, L1_GETS, IFLOXX) {
+  transition(ILX, L1_GETS, IFLOXX) {TagArrayRead} {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition(ILOSX, L1_GETS, IFLOSX) {
+  transition(ILOSX, L1_GETS, IFLOSX) {TagArrayRead} {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition({ILOS, ILO}, L1_GETS, IFLO) {
+  transition({ILOS, ILO}, L1_GETS, IFLO) {TagArrayRead} {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition(ILS, L1_GETS, IFLS) {
+  transition(ILS, L1_GETS, IFLS) {TagArrayRead} {
     k_forwardLocalGETSToLocalSharer;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition({ILX, ILOX}, L1_GETX, IFLOXX) {
+  transition({ILX, ILOX}, L1_GETX, IFLOXX) {TagArrayRead} {
     kk_forwardLocalGETXToLocalExclusive;
     e_sendAckToL1Requestor;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition(ILOX, L1_GETS, IFLOX) {
+  transition(ILOX, L1_GETS, IFLOX) {TagArrayRead} {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition(IFLOX, Unblock, ILOSX) {
+  transition(IFLOX, Unblock, ILOSX) {TagArrayRead} {
     g_recordLocalSharer;
     n_popResponseQueue;
   }
 
-  transition(IFLS, Unblock, ILS) {
+  transition(IFLS, Unblock, ILS) {TagArrayRead} {
     g_recordLocalSharer;
     n_popResponseQueue;
   }
 
-  transition(IFLOXX, Unblock, ILOSX) {
+  transition(IFLOXX, Unblock, ILOSX) {TagArrayRead} {
     g_recordLocalSharer;
     n_popResponseQueue;
   }
 
-  transition(IFLOSX, Unblock, ILOSX) {
+  transition(IFLOSX, Unblock, ILOSX) {TagArrayRead} {
     g_recordLocalSharer;
     n_popResponseQueue;
   }
 
-  transition({IFLOSX, IFLOXX}, Exclusive_Unblock, ILX) {
+  transition({IFLOSX, IFLOXX}, Exclusive_Unblock, ILX) {TagArrayRead} {
     g_recordLocalExclusive;
     n_popResponseQueue;
   }
 
-  transition(IFLO, Unblock, ILOS) {
+  transition(IFLO, Unblock, ILOS) {TagArrayRead} {
     g_recordLocalSharer;
     n_popResponseQueue;
   }
 
 
-  transition(ILOSX, L1_GETX, IFLXO) {
+  transition(ILOSX, L1_GETX, IFLXO) {TagArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     h_countLocalSharersExceptRequestor;
@@ -2037,7 +2073,7 @@ machine(L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLXO, Exclusive_Unblock, ILX) {
+  transition(IFLXO, Exclusive_Unblock, ILX) {TagArrayWrite} {
     g_recordLocalExclusive;
     s_deallocateTBE;
     n_popResponseQueue;
@@ -2045,12 +2081,12 @@ machine(L2Cache, "Token protocol")
 
   // LOCAL REQUESTS THAT MUST ISSUE
 
-  transition(NP, {L1_PUTS, L1_PUTX, L1_PUTO}) {
+  transition(NP, {L1_PUTS, L1_PUTX, L1_PUTO}) {TagArrayRead} {
     ll_writebackNack;
     o_popL1RequestQueue;
   }
 
-  transition({NP, I}, L1_GETS, IGS) {
+  transition({NP, I}, L1_GETS, IGS) {TagArrayRead} {
     i_allocateTBE;
     s_recordGetSL1ID;
     a_issueGETS;
@@ -2058,7 +2094,7 @@ machine(L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition({NP, I}, L1_GETX, IGM) {
+  transition({NP, I}, L1_GETX, IGM) {TagArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
@@ -2066,7 +2102,7 @@ machine(L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(S, L1_GETX, IGM) {
+  transition(S, L1_GETX, IGM) {TagArrayRead, DataArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
@@ -2077,7 +2113,7 @@ machine(L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(ILS, L1_GETX, IGMLS) {
+  transition(ILS, L1_GETX, IGMLS) {TagArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
@@ -2122,7 +2158,7 @@ machine(L2Cache, "Token protocol")
   }
 
 
-  transition(ILOS, L1_GETX, IGMIO) {
+  transition(ILOS, L1_GETX, IGMIO) {TagArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
@@ -2131,17 +2167,17 @@ machine(L2Cache, "Token protocol")
   }
 
   // new exclusive happened while sharer attempted writeback
-  transition(ILX, {L1_PUTS, L1_PUTS_only, L1_PUTO}) {
+  transition(ILX, {L1_PUTS, L1_PUTS_only, L1_PUTO}) {TagArrayRead} {
     ll_writebackNack;
     o_popL1RequestQueue;
   }
 
-  transition(S, L1_PUTS) {
+  transition(S, L1_PUTS) {TagArrayRead} {
     ll_writebackNack;
     o_popL1RequestQueue;
   }
 
-  transition(OLS, L1_GETX, OGMIO) {
+  transition(OLS, L1_GETX, OGMIO) {TagArrayRead, DataArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
@@ -2159,7 +2195,7 @@ machine(L2Cache, "Token protocol")
     m_popRequestQueue;
   }
 
-  transition(ILO, L1_GETX, IGMIO) {
+  transition(ILO, L1_GETX, IGMIO) {TagArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
@@ -2169,7 +2205,7 @@ machine(L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition({ILO, ILOX}, L1_PUTS) {
+  transition({ILO, ILOX}, L1_PUTS) {TagArrayRead} {
     ll_writebackNack;
     o_popL1RequestQueue;
   }
@@ -2313,7 +2349,7 @@ machine(L2Cache, "Token protocol")
   }
 
 
-  transition(SLS, L1_GETX, IGMLS) {
+  transition(SLS, L1_GETX, IGMLS) {TagArrayRead, DataArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
@@ -2327,7 +2363,7 @@ machine(L2Cache, "Token protocol")
 
   }
 
-  transition(SLS, L1_GETS, SLSS ) {
+  transition(SLS, L1_GETS, SLSS ) {TagArrayRead, DataArrayRead} {
     d_sendDataToL1GETS;
     r_setMRU;
     uu_profileHit;
@@ -2340,7 +2376,7 @@ machine(L2Cache, "Token protocol")
   }
 
 
-  transition(O, L1_GETX, IGMO) {
+  transition(O, L1_GETX, IGMO) {TagArrayRead, DataArrayRead} {
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
@@ -2350,7 +2386,7 @@ machine(L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(OLS, L1_GETS, OLSS) {
+  transition(OLS, L1_GETS, OLSS) {TagArrayRead, DataArrayRead}{
     d_sendDataToL1GETS;
     r_setMRU;
     uu_profileHit;
@@ -2378,7 +2414,7 @@ machine(L2Cache, "Token protocol")
 
   // LOCAL REQUESTS SATISFIED DIRECTLY BY L2
 
-  transition(M, L1_GETX, MM) {
+  transition(M, L1_GETX, MM) {TagArrayRead, DataArrayRead} {
     i_allocateTBE;
     // should count 0 of course
     h_countLocalSharersExceptRequestor;
@@ -2395,7 +2431,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(M, L1_GETS, OO) {
+  transition(M, L1_GETS, OO) {TagArrayRead, DataArrayRead} {
     i_allocateTBE;
     // should count 0 of course
     h_countLocalSharersExceptRequestor;
@@ -2406,7 +2442,7 @@ machine(L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(S, L1_GETS, SS) {
+  transition(S, L1_GETS, SS) { TagArrayRead, DataArrayRead}{
     d_sendDataToL1GETS;
     r_setMRU;
     uu_profileHit;
@@ -2418,7 +2454,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(O, L1_GETS, OO) {
+  transition(O, L1_GETS, OO) {TagArrayRead, DataArrayRead} {
     d_sendDataToL1GETS;
     r_setMRU;
     uu_profileHit;
@@ -2439,30 +2475,30 @@ machine(L2Cache, "Token protocol")
 
 
   // L1 WRITEBACKS
-  transition(ILO, L1_PUTO, ILOW) {
+  transition(ILO, L1_PUTO, ILOW) {TagArrayRead} {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
-  transition(ILOX, L1_PUTO, ILOXW) {
+  transition(ILOX, L1_PUTO, ILOXW) {TagArrayRead} {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
 
-  transition(ILOS, L1_PUTO, ILOSW) {
+  transition(ILOS, L1_PUTO, ILOSW) {TagArrayRead} {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
-  transition(ILOSX, L1_PUTO, ILOSXW) {
+  transition(ILOSX, L1_PUTO, ILOSXW) {TagArrayRead} {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
 
   // hmmm...keep data or drop.  Just drop for now
-  transition(ILOS, L1_PUTS_only, ILOW) {
+  transition(ILOS, L1_PUTS_only, ILOW) {TagArrayRead} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
@@ -2477,7 +2513,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILOSX, L1_PUTS_only, ILOXW) {
+  transition(ILOSX, L1_PUTS_only, ILOXW) {TagArrayRead} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
@@ -2488,12 +2524,12 @@ machine(L2Cache, "Token protocol")
   }
 
   // hmmm...keep data or drop.  Just drop for now
-  transition(ILOS, L1_PUTS, ILOSW) {
+  transition(ILOS, L1_PUTS, ILOSW) {TagArrayRead} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
 
-  transition(ILOSX, L1_PUTS, ILOSXW) {
+  transition(ILOSX, L1_PUTS, ILOSXW) {TagArrayRead} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
@@ -2508,12 +2544,12 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(SLS, L1_PUTS, SLSW) {
+  transition(SLS, L1_PUTS, SLSW) {TagArrayRead, DataArrayRead} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
 
-  transition(SLS, L1_PUTS_only, SW) {
+  transition(SLS, L1_PUTS_only, SW) {TagArrayRead, DataArrayRead} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
@@ -2523,32 +2559,32 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(OLS, L1_PUTS, OLSW) {
+  transition(OLS, L1_PUTS, OLSW) {TagArrayRead, DataArrayRead} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
 
-  transition(ILS, L1_PUTS, ILSW) {
+  transition(ILS, L1_PUTS, ILSW) {TagArrayRead} {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
-  transition(ILS, L1_PUTS_only, IW) {
+  transition(ILS, L1_PUTS_only, IW) {TagArrayRead} {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
-   transition(OLS, L1_PUTS_only, OW) {
+   transition(OLS, L1_PUTS_only, OW) {TagArrayRead, DataArrayRead, DataArrayWrite} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
 
-  transition(OLSX, L1_PUTS_only, OXW) {
+  transition(OLSX, L1_PUTS_only, OXW) {TagArrayRead, DataArrayRead, DataArrayWrite} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
 
-  transition(OLSX, L1_PUTS, OLSXW) {
+  transition(OLSX, L1_PUTS, OLSXW) {TagArrayRead, DataArrayRead, DataArrayWrite} {
     l_writebackAckDropData;
     o_popL1RequestQueue;
   }
@@ -2558,22 +2594,22 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(OW, {Unblock}, O) {
+  transition(OW, {Unblock}, O) {TagArrayWrite} {
     gg_clearSharerFromL1Response;
     n_popResponseQueue;
   }
 
-  transition(OXW, {Unblock}, M) {
+  transition(OXW, {Unblock}, M) {TagArrayWrite} {
     gg_clearSharerFromL1Response;
     n_popResponseQueue;
   }
 
-  transition(ILX, L1_PUTX, ILXW ) {
+  transition(ILX, L1_PUTX, ILXW ) {TagArrayRead} {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
-  transition(ILXW, L1_WBDIRTYDATA, M) {
+  transition(ILXW, L1_WBDIRTYDATA, M) {TagArrayWrite, DataArrayWrite} {
     gg_clearLocalSharers;
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
@@ -2582,7 +2618,7 @@ machine(L2Cache, "Token protocol")
   }
 
   // clean writeback
-  transition(ILXW, L1_WBCLEANDATA, M) {
+  transition(ILXW, L1_WBCLEANDATA, M) {TagArrayWrite, DataArrayWrite} {
     gg_clearLocalSharers;
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
@@ -2595,7 +2631,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILSW, L1_WBCLEANDATA, SLS) {
+  transition(ILSW, L1_WBCLEANDATA, SLS) {TagArrayWrite, DataArrayWrite} {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeDataToCache;
@@ -2603,7 +2639,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(IW, L1_WBCLEANDATA, S) {
+  transition(IW, L1_WBCLEANDATA, S) {TagArrayWrite, DataArrayWrite} {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeDataToCache;
@@ -2613,7 +2649,7 @@ machine(L2Cache, "Token protocol")
   }
 
   // Owner can have dirty data
-  transition(ILOW, {L1_WBCLEANDATA, L1_WBDIRTYDATA}, O) {
+  transition(ILOW, {L1_WBCLEANDATA, L1_WBDIRTYDATA}, O) {TagArrayWrite, DataArrayWrite} {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Response;
@@ -2621,7 +2657,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILOXW, L1_WBDIRTYDATA, M) {
+  transition(ILOXW, L1_WBDIRTYDATA, M) {TagArrayWrite, DataArrayWrite} {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Response;
@@ -2629,7 +2665,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILOXW, L1_WBCLEANDATA, M) {
+  transition(ILOXW, L1_WBCLEANDATA, M) {TagArrayWrite, DataArrayWrite} {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Response;
@@ -2637,7 +2673,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILOSW, {L1_WBCLEANDATA, L1_WBDIRTYDATA}, OLS) {
+  transition(ILOSW, {L1_WBCLEANDATA, L1_WBDIRTYDATA}, OLS) {TagArrayWrite, DataArrayWrite} {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Response;
@@ -2645,7 +2681,7 @@ machine(L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(ILOSXW, {L1_WBCLEANDATA, L1_WBDIRTYDATA}, OLSX) {
+  transition(ILOSXW, {L1_WBCLEANDATA, L1_WBDIRTYDATA}, OLSX) {TagArrayWrite, DataArrayWrite} {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Response;
@@ -2654,12 +2690,12 @@ machine(L2Cache, "Token protocol")
   }
 
 
-  transition(SLSW, {Unblock}, SLS) {
+  transition(SLSW, {Unblock}, SLS) {TagArrayWrite} {
     gg_clearSharerFromL1Response;
     n_popResponseQueue;
   }
 
-  transition(OLSW, {Unblock}, OLS) {
+  transition(OLSW, {Unblock}, OLS) {TagArrayWrite} {
     gg_clearSharerFromL1Response;
     n_popResponseQueue;
   }
@@ -2670,27 +2706,27 @@ machine(L2Cache, "Token protocol")
     rr_deallocateL2CacheBlock;
   }
 
-  transition(ILS, L2_Replacement) {
+  transition(ILS, L2_Replacement) {TagArrayRead} {
     y_copyCacheStateToDir;
     rr_deallocateL2CacheBlock;
   }
 
-  transition(ILX, L2_Replacement )  {
+  transition(ILX, L2_Replacement ) {TagArrayRead} {
     y_copyCacheStateToDir;
     rr_deallocateL2CacheBlock;
   }
 
-  transition({ILO, ILOS}, L2_Replacement )  {
+  transition({ILO, ILOS}, L2_Replacement ) {TagArrayRead} {
     y_copyCacheStateToDir;
     rr_deallocateL2CacheBlock;
   }
 
-  transition(SLS, L2_Replacement, ILS) {
+  transition(SLS, L2_Replacement, ILS) {TagArrayRead} {
     y_copyCacheStateToDir;
     rr_deallocateL2CacheBlock;
   }
 
-  transition({OLS, OLSX}, L2_Replacement, OLSI) {
+  transition({OLS, OLSX}, L2_Replacement, OLSI) {TagArrayRead} {
     y_copyCacheStateToDir;
     b_issuePUTO_ls;
     i_allocateTBE;
@@ -2698,13 +2734,13 @@ machine(L2Cache, "Token protocol")
   }
 
 
-  transition(O, L2_Replacement, OI) {
+  transition(O, L2_Replacement, OI) {TagArrayRead, DataArrayRead} {
     b_issuePUTO;
     i_allocateTBE;
     rr_deallocateL2CacheBlock;
   }
 
-  transition(M, L2_Replacement, MI) {
+  transition(M, L2_Replacement, MI) {TagArrayRead, DataArrayRead} {
     b_issuePUTX;
     i_allocateTBE;
     rr_deallocateL2CacheBlock;

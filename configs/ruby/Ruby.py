@@ -111,30 +111,29 @@ def setup_memory_controllers(system, ruby, dir_cntrls, dma_cntrls, options):
     # attached to a directory controller.  A separate controller is created
     # for each address range as the abstract memory can handle only one
     # contiguous address range as of now.
+    crossbar = None
+    crossbar = IOXBar(width=64)
+    crossbars.append(crossbar)
+    for dma_cntrl in dma_cntrls:
+        dma_cntrl.memory = crossbar.slave
     for dir_cntrl in dir_cntrls:
         dir_cntrl.directory.numa_high_bit = numa_bit
 
-        crossbar = None
         #if len(system.mem_ranges) > 1:
-        crossbar = IOXBar(width=32)
-        crossbars.append(crossbar)
         dir_cntrl.memory = crossbar.slave
-        for dma_cntrl in dma_cntrls:
-            dma_cntrl.memory = crossbar.slave
+        for i in xrange(options.num_mems):
+            for r in system.mem_ranges:
+                mem_ctrl = MemConfig.create_mem_ctrl(
+                    MemConfig.get(options.mem_type), r, index, options.num_mems,
+                    int(math.log(options.num_mems, 2)), options.cacheline_size)
 
-        for r in system.mem_ranges:
-            mem_ctrl = MemConfig.create_mem_ctrl(
-                MemConfig.get(options.mem_type), r, index, options.num_dirs,
-                int(math.log(options.num_dirs, 2)), options.cacheline_size)
+                mem_ctrls.append(mem_ctrl)
 
-            mem_ctrls.append(mem_ctrl)
-
-            if crossbar != None:
-                mem_ctrl.port = crossbar.master
-            else:
-                mem_ctrl.port = dir_cntrl.memory
-
-        index += 1
+                if crossbar != None:
+                    mem_ctrl.port = crossbar.master
+                else:
+                    mem_ctrl.port = dir_cntrl.memory
+            index += 1
 
     system.mem_ctrls = mem_ctrls
 

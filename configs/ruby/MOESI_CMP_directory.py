@@ -38,13 +38,13 @@ from Ruby import send_evicts
 # Note: the L1 Cache latency is only used by the sequencer on fast path hits
 #
 class L1Cache(RubyCache):
-    latency = 3
+    latency = 3 # dummy, for Seqs only
 
 #
 # Note: the L2 Cache latency is not currently used
 #
 class L2Cache(RubyCache):
-    latency = 15
+    latency = 15 # dummy, only for Seqs, L2 is not connected with Seqs
 
 def define_options(parser):
     return
@@ -89,11 +89,15 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                             assoc = options.l1i_assoc,
                             start_index_bit = block_size_bits,
                             is_icache = True,
+                            dataArrayBanks = options.l1i_banks,
+                            tagArrayBanks = options.l1i_banks,
                             resourceStalls = True)
         l1d_cache = L1Cache(size = options.l1d_size,
                             assoc = options.l1d_assoc,
                             start_index_bit = block_size_bits,
                             is_icache = False,
+                            dataArrayBanks = options.l1d_banks,
+                            tagArrayBanks = options.l1d_banks,
                             resourceStalls = True)
 
         l1_cntrl = L1Cache_Controller(version = i,
@@ -137,11 +141,15 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                             assoc = options.l1i_assoc,
                             start_index_bit = block_size_bits,
                             is_icache = True,
+                            dataArrayBanks = options.l1i_banks,
+                            tagArrayBanks = options.l1i_banks,
                             resourceStalls = True)
         accel_l1d_cache = L1Cache(size = system.datapaths[i].cacheSize,
                             assoc = options.l1d_assoc,
                             start_index_bit = block_size_bits,
                             is_icache = False,
+                            dataArrayBanks = options.l1d_banks,
+                            tagArrayBanks = options.l1d_banks,
                             resourceStalls = True)
 
         accel_l1_cntrl = L1Cache_Controller(version = i + options.num_cpus,
@@ -188,8 +196,12 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         # First create the Ruby objects associated with this cpu
         #
         l2_cache = L2Cache(size = options.l2_size,
+                           tagAccessLatency = 2,
+                           dataAccessLatency = options.l2_hit_latency,
                            assoc = options.l2_assoc,
                            start_index_bit = l2_index_start,
+                           dataArrayBanks = options.l2_banks,
+                           tagArrayBanks = options.l2_banks,
                            resourceStalls = True)
 
         l2_cntrl = L2Cache_Controller(version = i,
@@ -222,23 +234,40 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
     ruby_system.memctrl_clk_domain = DerivedClockDomain(
                                           clk_domain=ruby_system.clk_domain,
                                           clk_divider=3)
+
+    dir_size = MemorySize('0B')
+    dir_size.value = mem_module_size
+    pf_size = MemorySize(options.dir_size)
+    pf_size.value = pf_size.value * 2
+    dir_bits = int(math.log(options.num_dirs, 2))
+    pf_bits = int(math.log(pf_size.value, 2))
+
+    if dir_bits > 0:
+        pf_start_bit = dir_bits + block_size_bits - 1
+    else:
+        pf_start_bit = block_size_bits
+
+
     for i in xrange(options.num_dirs):
-        dir_size = MemorySize('0B')
-        dir_size.value = mem_module_size
+
+        pf = RubyCache(
+            tagAccessLatency = 1,
+            dataAccessLatency = options.dir_latency,
+            dataArrayBanks = options.dir_banks,
+            tagArrayBanks = options.dir_banks,
+            latency = 1, # dummy
+    	      size = '1GB',
+            assoc = options.dir_assoc,
+            resourceStalls = True)
 
         dir_cntrl = Directory_Controller(version = i,
                                          directory = RubyDirectoryMemory(
                                              version = i, size = dir_size),
-																				 probeFilter = RubyCache(
-                                             dataAccessLatency = options.dir_latency,
-                                             dataArrayBanks = options.dir_banks,
-                                             latency = 1, # dummy
-				                                     size = "2MB",
-        			                               assoc = options.dir_assoc,
-                      			                 resourceStalls = True),
+                                         probeFilter = pf,
                                          transitions_per_cycle = options.ports,
                                          ruby_system = ruby_system,
-                                         number_of_TBEs = options.dir_mshrs)
+                                         number_of_TBEs = options.dir_mshrs,
+                                         probe_filter_enabled = False)
 
         exec("ruby_system.dir_cntrl%d = dir_cntrl" % i)
         dir_cntrl_nodes.append(dir_cntrl)

@@ -31,6 +31,9 @@ machine(Directory, "Directory protocol")
    CacheMemory * probeFilter;
    Cycles directory_latency := 6;
    Cycles to_memory_controller_latency := 1;
+   bool probe_filter_enabled := "False";
+   bool full_bit_dir_enabled := "False";
+
 
    // Message Queues
    MessageBuffer * requestToDir, network="From", virtual_network="1",
@@ -107,6 +110,13 @@ machine(Directory, "Directory protocol")
     int WaitingUnblocks,           desc="Number of acks we're waiting for";
   }
 
+  // ProbeFilterEntry
+  structure(PfEntry, desc="...", interface="AbstractCacheEntry") {
+    State PfState,                 desc="Directory state";
+    MachineID Owner,               desc="Owner node";
+    Set Sharers,                   desc="sharing vector for full bit directory";
+  }
+
   structure(TBE, desc="...") {
     Address PhysicalAddress,   desc="Physical address for this entry";
     int Len,           desc="Length of request";
@@ -142,11 +152,25 @@ machine(Directory, "Directory protocol")
     return dir_entry;
   }
 
-  State getState(TBE tbe, Address addr) {
+  PfEntry getProbeFilterEntry(Address addr), return_by_pointer="yes" {
+    if (probe_filter_enabled || full_bit_dir_enabled) {
+      PfEntry pfEntry := static_cast(PfEntry, "pointer", probeFilter.lookup(addr));
+      return pfEntry;
+    }
+    return OOD;
+  }
+
+  State getState(TBE tbe, PfEntry pf_entry, Address addr) {
+    /*if (probe_filter_enabled || full_bit_dir_enabled) {
+      if (is_valid(pf_entry)) {
+        assert(pf_entry.PfState == getDirectoryEntry(addr).DirectoryState);
+      }
+    }*/
+
     return getDirectoryEntry(addr).DirectoryState;
   }
 
-  void setState(TBE tbe, Address addr, State state) {
+  void setState(TBE tbe, PfEntry pf_entry, Address addr, State state) {
     if (directory.isPresent(addr)) {
 
       if (state == State:I) {
@@ -177,6 +201,20 @@ machine(Directory, "Directory protocol")
          // disable coherence checker
         // sequencer.checkCoherence(addr);
       }
+
+      // Set ProbeFilter's State
+      /*if (probe_filter_enabled || full_bit_dir_enabled) {
+        if (is_valid(pf_entry)) {
+          pf_entry.PfState := state;
+        }
+        if (state == State:NX || state == State:NO || state == State:S || state == State:O) {
+          assert(is_valid(pf_entry));
+        }
+        if (state == State:E) {
+          assert(is_valid(pf_entry) == false);
+        }
+      }*/
+
       else {
         getDirectoryEntry(addr).DirectoryState := state;
       }
@@ -193,7 +231,7 @@ machine(Directory, "Directory protocol")
     return AccessPermission:NotPresent;
   }
 
-  void setAccessPermission(Address addr, State state) {
+  void setAccessPermission(PfEntry pf_entry, Address addr, State state) {
     if (directory.isPresent(addr)) {
       getDirectoryEntry(addr).changePermission(Directory_State_to_permission(state));
     }
@@ -259,29 +297,30 @@ machine(Directory, "Directory protocol")
   in_port(unblockNetwork_in, ResponseMsg, responseToDir) {
     if (unblockNetwork_in.isReady()) {
       peek(unblockNetwork_in, ResponseMsg) {
+        PfEntry pf_entry := getProbeFilterEntry(in_msg.Addr);
         if (in_msg.Type == CoherenceResponseType:UNBLOCK) {
           if (getDirectoryEntry(in_msg.Addr).WaitingUnblocks == 1) {
             trigger(Event:Last_Unblock, in_msg.Addr,
-                    TBEs[in_msg.Addr]);
+                    pf_entry, TBEs[in_msg.Addr]);
           } else {
             trigger(Event:Unblock, in_msg.Addr,
-                    TBEs[in_msg.Addr]);
+                    pf_entry, TBEs[in_msg.Addr]);
           }
         } else if (in_msg.Type == CoherenceResponseType:UNBLOCK_EXCLUSIVE) {
           trigger(Event:Exclusive_Unblock, in_msg.Addr,
-                  TBEs[in_msg.Addr]);
+                  pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceResponseType:WRITEBACK_DIRTY_DATA) {
           trigger(Event:Dirty_Writeback, in_msg.Addr,
-                  TBEs[in_msg.Addr]);
+                  pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceResponseType:WRITEBACK_CLEAN_ACK) {
           trigger(Event:Clean_Writeback, in_msg.Addr,
-                  TBEs[in_msg.Addr]);
+                  pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceResponseType:DATA_EXCLUSIVE) {
           trigger(Event:Data, in_msg.Addr,
-                  TBEs[in_msg.Addr]);
+                  pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceResponseType:DMA_ACK) {
           trigger(Event:DMA_ACK, in_msg.Addr,
-                  TBEs[in_msg.Addr]);
+                  pf_entry, TBEs[in_msg.Addr]);
         } else {
           error("Invalid message");
         }
@@ -292,22 +331,23 @@ machine(Directory, "Directory protocol")
   in_port(requestQueue_in, RequestMsg, requestToDir) {
     if (requestQueue_in.isReady()) {
       peek(requestQueue_in, RequestMsg) {
+        PfEntry pf_entry := getProbeFilterEntry(in_msg.Addr);
         if (in_msg.Type == CoherenceRequestType:GETS) {
-          trigger(Event:GETS, in_msg.Addr, TBEs[in_msg.Addr]);
+          trigger(Event:GETS, in_msg.Addr, pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceRequestType:GETX) {
-          trigger(Event:GETX, in_msg.Addr, TBEs[in_msg.Addr]);
+          trigger(Event:GETX, in_msg.Addr, pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceRequestType:PUTX) {
-          trigger(Event:PUTX, in_msg.Addr, TBEs[in_msg.Addr]);
+          trigger(Event:PUTX, in_msg.Addr, pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceRequestType:PUTO) {
-          trigger(Event:PUTO, in_msg.Addr, TBEs[in_msg.Addr]);
+          trigger(Event:PUTO, in_msg.Addr, pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceRequestType:PUTO_SHARERS) {
-          trigger(Event:PUTO_SHARERS, in_msg.Addr, TBEs[in_msg.Addr]);
+          trigger(Event:PUTO_SHARERS, in_msg.Addr, pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == CoherenceRequestType:DMA_READ) {
           trigger(Event:DMA_READ, makeLineAddress(in_msg.Addr),
-                  TBEs[makeLineAddress(in_msg.Addr)]);
+                  pf_entry, TBEs[makeLineAddress(in_msg.Addr)]);
         } else if (in_msg.Type == CoherenceRequestType:DMA_WRITE) {
           trigger(Event:DMA_WRITE, makeLineAddress(in_msg.Addr),
-                  TBEs[makeLineAddress(in_msg.Addr)]);
+                  pf_entry, TBEs[makeLineAddress(in_msg.Addr)]);
         } else {
           error("Invalid message");
         }
@@ -319,10 +359,11 @@ machine(Directory, "Directory protocol")
   in_port(memQueue_in, MemoryMsg, responseFromMemory) {
     if (memQueue_in.isReady()) {
       peek(memQueue_in, MemoryMsg) {
+        PfEntry pf_entry := getProbeFilterEntry(in_msg.Addr);
         if (in_msg.Type == MemoryRequestType:MEMORY_READ) {
-          trigger(Event:Memory_Data, in_msg.Addr, TBEs[in_msg.Addr]);
+          trigger(Event:Memory_Data, in_msg.Addr, pf_entry, TBEs[in_msg.Addr]);
         } else if (in_msg.Type == MemoryRequestType:MEMORY_WB) {
-          trigger(Event:Memory_Ack, in_msg.Addr, TBEs[in_msg.Addr]);
+          trigger(Event:Memory_Ack, in_msg.Addr, pf_entry, TBEs[in_msg.Addr]);
         } else {
           DPRINTF(RubySlicc, "%s\n", in_msg.Type);
           error("Invalid message");
@@ -595,7 +636,7 @@ machine(Directory, "Directory protocol")
 
 
   // TRANSITIONS
-  transition(I, GETX, MM) {
+  transition(I, GETX, MM) {PfRead} {
     v_allocateTBE;
     qf_queueMemoryFetchRequest;
     i_popIncomingRequestQueue;
@@ -604,32 +645,31 @@ machine(Directory, "Directory protocol")
   transition(I, DMA_READ, XI_M) {PfRead} {
     v_allocateTBE;
     drm_dmaReadMiss;
-    outstandingReq;
     qf_queueMemoryFetchRequest;
     i_popIncomingRequestQueue;
   }
 
-  transition(I, DMA_WRITE, XI_U) {PfWrite} {
+  transition(I, DMA_WRITE, XI_U) {PfRead} {
     v_allocateTBE;
     qw_queueMemoryWBRequest2;
     a_sendDMAAck;  // ack count may be zero
     i_popIncomingRequestQueue;
   }
 
-  transition(XI_M, Memory_Data, I) {
+  transition(XI_M, Memory_Data, I) {PfWrite} {
     w_deallocateTBE;
     d_sendDataMsg;  // ack count may be zero
     q_popMemQueue;
   }
 
-  transition(XI_U, Exclusive_Unblock, I) {
+  transition(XI_U, Exclusive_Unblock, I) {PfWrite} {
     w_deallocateTBE;
     cc_clearSharers;
     c_clearOwner;
     j_popIncomingUnblockQueue;
   }
 
-  transition(S, GETX, MM) {
+  transition(S, GETX, MM) {PfRead} {
     v_allocateTBE;
     qf_queueMemoryFetchRequest;
     g_sendInvalidations;
@@ -638,7 +678,6 @@ machine(Directory, "Directory protocol")
 
   transition(S, DMA_READ) {PfRead} {
     drh_dmaReadHit;
-    outstandingReq;
     //qf_queueMemoryFetchRequest;
     p_fwdDataToDMA;
     //g_sendInvalidations;  // the DMA will collect the invalidations then send an Unblock Exclusive
@@ -646,7 +685,7 @@ machine(Directory, "Directory protocol")
     i_popIncomingRequestQueue;
   }
 
-  transition(S, DMA_WRITE, XI_U) {PfWrite} {
+  transition(S, DMA_WRITE, XI_U) {PfRead} {
     v_allocateTBE;
     qw_queueMemoryWBRequest2;
     a_sendDMAAck;  // ack count may be zero
@@ -654,30 +693,30 @@ machine(Directory, "Directory protocol")
     i_popIncomingRequestQueue;
   }
 
-  transition(I, GETS, IS) {
+  transition(I, GETS, IS) {PfRead} {
     v_allocateTBE;
     qf_queueMemoryFetchRequest;
     i_popIncomingRequestQueue;
   }
 
-  transition({S, SS}, GETS, SS) {
+  transition({S, SS}, GETS, SS) {PfRead} {
     v_allocateTBE;
     qf_queueMemoryFetchRequest;
     n_incrementOutstanding;
     i_popIncomingRequestQueue;
   }
 
-  transition({I, S}, PUTO) {
+  transition({I, S}, PUTO) {PfRead} {
     b_sendWriteBackNack;
     i_popIncomingRequestQueue;
   }
 
-  transition({I, S, O}, PUTX) {
+  transition({I, S, O}, PUTX) {PfRead} {
     b_sendWriteBackNack;
     i_popIncomingRequestQueue;
   }
 
-  transition(O, GETX, MM) {
+  transition(O, GETX, MM) {PfRead} {
     v_allocateTBE;
     f_forwardRequest;
     g_sendInvalidations;
@@ -692,12 +731,12 @@ machine(Directory, "Directory protocol")
     i_popIncomingRequestQueue;
   }
 
-  transition(OD, DMA_ACK, O) {
+  transition(OD, DMA_ACK, O) {PfWrite} {
     w_deallocateTBE;
     j_popIncomingUnblockQueue;
   }
 
-  transition({O,M}, DMA_WRITE, OI_D) {PfWrite} {
+  transition({O,M}, DMA_WRITE, OI_D) {PfRead} {
     v_allocateTBE;
     f_forwardRequestDirIsRequestor;    // need the modified data before we can proceed
     g_sendInvalidations;               // these go to the DMA Controller
@@ -711,14 +750,14 @@ machine(Directory, "Directory protocol")
     j_popIncomingUnblockQueue;
   }
 
-  transition({O, OO}, GETS, OO) {
+  transition({O, OO}, GETS, OO) {PfRead} {
     v_allocateTBE;
     f_forwardRequest;
     n_incrementOutstanding;
     i_popIncomingRequestQueue;
   }
 
-  transition(M, GETX, MM) {
+  transition(M, GETX, MM) {PfRead} {
     v_allocateTBE;
     f_forwardRequest;
     i_popIncomingRequestQueue;
@@ -732,43 +771,43 @@ machine(Directory, "Directory protocol")
     i_popIncomingRequestQueue;
   }
 
-  transition(MD, DMA_ACK, M) {
+  transition(MD, DMA_ACK, M) {PfWrite} {
     w_deallocateTBE;
     j_popIncomingUnblockQueue;
   }
 
-  transition(M, GETS, MO) {
+  transition(M, GETS, MO) {PfRead} {
     v_allocateTBE;
     f_forwardRequest;
     i_popIncomingRequestQueue;
   }
 
-  transition(M, PUTX, MI) {
+  transition(M, PUTX, MI) {PfRead} {
     v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
 
   // happens if M->O transition happens on-chip
-  transition(M, PUTO, MI) {
+  transition(M, PUTO, MI) {PfRead} {
     v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
 
-  transition(M, PUTO_SHARERS, MIS) {
+  transition(M, PUTO_SHARERS, MIS) {PfRead} {
     v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
 
-  transition(O, PUTO, OS) {
+  transition(O, PUTO, OS) {PfRead} {
     v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
   }
 
-  transition(O, PUTO_SHARERS, OSS) {
+  transition(O, PUTO_SHARERS, OSS) {PfRead} {
     v_allocateTBE;
     a_sendWriteBackAck;
     i_popIncomingRequestQueue;
@@ -779,14 +818,14 @@ machine(Directory, "Directory protocol")
     zz_recycleRequest;
   }
 
-  transition({MM, MO}, Exclusive_Unblock, M) {
+  transition({MM, MO}, Exclusive_Unblock, M) {PfWrite} {
     w_deallocateTBE;
     cc_clearSharers;
     e_ownerIsUnblocker;
     j_popIncomingUnblockQueue;
   }
 
-  transition(MO, Unblock, O) {
+  transition(MO, Unblock, O) {PfWrite} {
     w_deallocateTBE;
     m_addUnlockerToSharers;
     j_popIncomingUnblockQueue;
@@ -800,13 +839,13 @@ machine(Directory, "Directory protocol")
     zz_recycleRequest;
   }
 
-  transition(IS, Unblock, S) {
+  transition(IS, Unblock, S) {PfWrite} {
     w_deallocateTBE;
     m_addUnlockerToSharers;
     j_popIncomingUnblockQueue;
   }
 
-  transition(IS, Exclusive_Unblock, M) {
+  transition(IS, Exclusive_Unblock, M) {PfWrite} {
     w_deallocateTBE;
     cc_clearSharers;
     e_ownerIsUnblocker;
@@ -819,7 +858,7 @@ machine(Directory, "Directory protocol")
     j_popIncomingUnblockQueue;
   }
 
-  transition(SS, Last_Unblock, S) {
+  transition(SS, Last_Unblock, S) {PfWrite} {
     w_deallocateTBE;
     m_addUnlockerToSharers;
     o_decrementOutstanding;
@@ -832,14 +871,14 @@ machine(Directory, "Directory protocol")
     j_popIncomingUnblockQueue;
   }
 
-  transition(OO, Last_Unblock, O) {
+  transition(OO, Last_Unblock, O) {PfWrite} {
     w_deallocateTBE;
     m_addUnlockerToSharers;
     o_decrementOutstanding;
     j_popIncomingUnblockQueue;
   }
 
-  transition(MI, Dirty_Writeback, I) {
+  transition(MI, Dirty_Writeback, I) {PfWrite} {
     w_deallocateTBE;
     c_clearOwner;
     cc_clearSharers;
@@ -847,58 +886,58 @@ machine(Directory, "Directory protocol")
     j_popIncomingUnblockQueue;
   }
 
-  transition(MIS, Dirty_Writeback, S) {
+  transition(MIS, Dirty_Writeback, S) {PfWrite} {
     w_deallocateTBE;
     c_moveOwnerToSharer;
     qw_queueMemoryWBRequest;
     j_popIncomingUnblockQueue;
   }
 
-  transition(MIS, Clean_Writeback, S) {
+  transition(MIS, Clean_Writeback, S) {PfWrite} {
     w_deallocateTBE;
     c_moveOwnerToSharer;
     j_popIncomingUnblockQueue;
   }
 
-  transition(OS, Dirty_Writeback, S) {
+  transition(OS, Dirty_Writeback, S) {PfWrite} {
     w_deallocateTBE;
     c_clearOwner;
     qw_queueMemoryWBRequest;
     j_popIncomingUnblockQueue;
   }
 
-  transition(OSS, Dirty_Writeback, S) {
+  transition(OSS, Dirty_Writeback, S) {PfWrite} {
     w_deallocateTBE;
     c_moveOwnerToSharer;
     qw_queueMemoryWBRequest;
     j_popIncomingUnblockQueue;
   }
 
-  transition(OSS, Clean_Writeback, S) {
+  transition(OSS, Clean_Writeback, S) {PfWrite} {
     w_deallocateTBE;
     c_moveOwnerToSharer;
     j_popIncomingUnblockQueue;
   }
 
-  transition(MI, Clean_Writeback, I) {
+  transition(MI, Clean_Writeback, I) {PfWrite} {
     w_deallocateTBE;
     c_clearOwner;
     cc_clearSharers;
     j_popIncomingUnblockQueue;
   }
 
-  transition(OS, Clean_Writeback, S) {
+  transition(OS, Clean_Writeback, S) {PfWrite}{
     w_deallocateTBE;
     c_clearOwner;
     j_popIncomingUnblockQueue;
   }
 
-  transition({MI, MIS}, Unblock, M) {
+  transition({MI, MIS}, Unblock, M) {PfWrite} {
     w_deallocateTBE;
     j_popIncomingUnblockQueue;
   }
 
-  transition({OS, OSS}, Unblock, O) {
+  transition({OS, OSS}, Unblock, O) {PfWrite} {
     j_popIncomingUnblockQueue;
   }
 

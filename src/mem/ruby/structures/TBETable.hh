@@ -103,10 +103,10 @@ inline void
 TBETable<ENTRY>::allocate(const Address& address)
 {
     printf("Allocated Address: %#8x\n", address.getAddress());
-    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
     assert(!isPresent(address));
     assert(m_map.size() < m_number_of_TBEs);
     m_map[address] = ENTRY();
+    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
 }
 
 template<class ENTRY>
@@ -114,10 +114,10 @@ inline void
 TBETable<ENTRY>::deallocate(const Address& address)
 {
     printf("Deallocated Address: %#8x\n", address.getAddress());
-    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
     assert(isPresent(address));
     assert(m_map.size() > 0);
     m_map.erase(address);
+    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
 }
 
 // looks an address up in the cache
