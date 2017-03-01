@@ -73,7 +73,7 @@ def get_processes(options):
     errouts = []
     pargs = []
 
-    workloads = options.cmd.split(';')
+    workloads = options.cmd.split(',')
     if options.input != "":
         inputs = options.input.split(';')
     if options.output != "":
@@ -81,7 +81,7 @@ def get_processes(options):
     if options.errout != "":
         errouts = options.errout.split(';')
     if options.options != "":
-        pargs = options.options.split(';')
+        pargs = options.options.split(',')
 
     idx = 0
     for wrkld in workloads:
@@ -179,7 +179,6 @@ system.cpu_voltage_domain = VoltageDomain()
 system.cpu_clk_domain = SrcClockDomain(clock = options.cpu_clock,
                                        voltage_domain =
                                        system.cpu_voltage_domain)
-
 if np > 0:
   system.cpu = [CPUClass(cpu_id=i) for i in xrange(np)]
   # All cpus belong to a common cpu_clk_domain, therefore running at a common

@@ -30,7 +30,7 @@ machine(Directory, "Directory protocol")
 :  DirectoryMemory * directory;
    CacheMemory * probeFilter;
    Cycles directory_latency := 6;
-   Cycles to_memory_controller_latency := 1;
+   Cycles to_memory_controller_latency := 2;
    bool probe_filter_enabled := "False";
    bool full_bit_dir_enabled := "False";
 
@@ -129,9 +129,10 @@ machine(Directory, "Directory protocol")
     void allocate(Address);
     void deallocate(Address);
     bool isPresent(Address);
-    void dmaReadHit();
-    void dmaReadMiss();
+    void dmaReadHit(Address);
+    void dmaReadMiss(Address);
     void outstandingReq();
+    void insertEviction(Address);
   }
 
   // ** OBJECTS **
@@ -375,10 +376,10 @@ machine(Directory, "Directory protocol")
   // Actions
 
   action(drh_dmaReadHit, "drh", desc="DMA Read Hit") {
-    TBEs.dmaReadHit();
+    TBEs.dmaReadHit(address);
   }
   action(drm_dmaReadMiss, "drm", desc="DMA Read Mioss") {
-    TBEs.dmaReadMiss();
+    TBEs.dmaReadMiss(address);
   }
 
   action(a_sendWriteBackAck, "a", desc="Send writeback ack to requestor") {
@@ -408,6 +409,7 @@ machine(Directory, "Directory protocol")
   }
 
   action(c_clearOwner, "c", desc="Clear the owner field") {
+    TBEs.insertEviction(address);
     getDirectoryEntry(address).Owner.clear();
   }
 
@@ -417,6 +419,7 @@ machine(Directory, "Directory protocol")
   }
 
   action(cc_clearSharers, "\c", desc="Clear the sharers field") {
+    //TBEs.insertEviction(address);
     getDirectoryEntry(address).Sharers.clear();
   }
 

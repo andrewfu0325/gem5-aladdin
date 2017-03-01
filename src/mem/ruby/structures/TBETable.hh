@@ -36,6 +36,7 @@
 
 extern int DmaReadHit;
 extern int DmaReadMiss;
+extern std::unordered_set<uint64_t> Evictions;
 
 template<class ENTRY>
 class TBETable
@@ -59,14 +60,23 @@ class TBETable
 
     // Print cache contents
     void print(std::ostream& out) const;
-    void dmaReadHit(){
+    void dmaReadHit(const Address& address){
+        printf("Hit: 0x%x\n", address.getAddress());
         DmaReadHit++;
     }
-    void dmaReadMiss(){
+    void dmaReadMiss(const Address& address){
+        printf("Miss: 0x%x\n", address.getAddress());
         DmaReadMiss++;
     }
     void outstandingReq(){
         printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
+    }
+    // Record Evictions
+    void insertEviction(const Address& address){
+            printf("Maximum size of set: %u\n", Evictions.max_size());
+            printf("size of set: %u\n", Evictions.size());
+            printf("Evict: 0x%x\n", address.getAddress());
+            Evictions.insert(address.getAddress());
     }
   private:
     // Private copy constructor and assignment operator
@@ -75,6 +85,7 @@ class TBETable
 
     // Data Members (m_prefix)
     m5::hash_map<Address, ENTRY> m_map;
+
 
   private:
     int m_number_of_TBEs;
@@ -102,22 +113,22 @@ template<class ENTRY>
 inline void
 TBETable<ENTRY>::allocate(const Address& address)
 {
-    printf("Allocated Address: %#8x\n", address.getAddress());
+//    printf("Allocated Address: %#8x\n", address.getAddress());
     assert(!isPresent(address));
     assert(m_map.size() < m_number_of_TBEs);
     m_map[address] = ENTRY();
-    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
+//    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
 }
 
 template<class ENTRY>
 inline void
 TBETable<ENTRY>::deallocate(const Address& address)
 {
-    printf("Deallocated Address: %#8x\n", address.getAddress());
+//    printf("Deallocated Address: %#8x\n", address.getAddress());
     assert(isPresent(address));
     assert(m_map.size() > 0);
     m_map.erase(address);
-    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
+//    printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
 }
 
 // looks an address up in the cache

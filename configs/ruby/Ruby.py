@@ -111,29 +111,32 @@ def setup_memory_controllers(system, ruby, dir_cntrls, dma_cntrls, options):
     # attached to a directory controller.  A separate controller is created
     # for each address range as the abstract memory can handle only one
     # contiguous address range as of now.
-    crossbar = None
-    crossbar = IOXBar(width=64)
-    crossbars.append(crossbar)
+    systemBus = IOXBar(width=options.xbar_width)
+    crossbars.append(systemBus)
     for dma_cntrl in dma_cntrls:
-        dma_cntrl.memory = crossbar.slave
-    for dir_cntrl in dir_cntrls:
-        dir_cntrl.directory.numa_high_bit = numa_bit
+        dma_cntrl.memory = systemBus.slave
 
-        #if len(system.mem_ranges) > 1:
-        dir_cntrl.memory = crossbar.slave
-        for i in xrange(options.num_mems):
-            for r in system.mem_ranges:
-                mem_ctrl = MemConfig.create_mem_ctrl(
-                    MemConfig.get(options.mem_type), r, index, options.num_mems,
-                    int(math.log(options.num_mems, 2)), options.cacheline_size)
+    dir_cntrl = dir_cntrls[0]
+    dir_cntrl.directory.numa_high_bit = numa_bit
 
-                mem_ctrls.append(mem_ctrl)
+    #if len(system.mem_ranges) > 1:
+    dir_cntrl.memory = systemBus.slave
+    for i in xrange(options.num_mems):
+        for r in system.mem_ranges:
+            mem_ctrl = MemConfig.create_mem_ctrl(
+                MemConfig.get(options.mem_type), r, index, options.num_mems,
+                int(math.log(options.num_mems, 2)), options.cacheline_size)
+            mem_ctrls.append(mem_ctrl)
 
-                if crossbar != None:
-                    mem_ctrl.port = crossbar.master
-                else:
-                    mem_ctrl.port = dir_cntrl.memory
-            index += 1
+            mem_ctrl.port = systemBus.master
+
+            '''
+            if crossbar != None:
+                mem_ctrl.port = crossbar.master
+            else:
+                mem_ctrl.port = dir_cntrl.memory
+            '''
+        index += 1
 
     system.mem_ctrls = mem_ctrls
 

@@ -125,6 +125,7 @@ def addCommonOptions(parser):
     parser.add_option("--num-l2caches", type="int", default=1)
     parser.add_option("--num-l3caches", type="int", default=1)
     parser.add_option("--l1d_size", type="string", default="64kB")
+    parser.add_option("--sweep_l1d_size", type="string", default="64kB")
     parser.add_option("--l1i_size", type="string", default="32kB")
     parser.add_option("--l1d_assoc", type="int", default=2)
     parser.add_option("--l1i_assoc", type="int", default=2)
@@ -147,10 +148,11 @@ def addCommonOptions(parser):
     parser.add_option("--dir_mshrs", type="int", default=32)
     parser.add_option("--dir_latency", type="int", default=8)
     parser.add_option("--dir_assoc", type="int", default=8)
-    parser.add_option("--xbar_width", type="int", default=8)
+    parser.add_option("--xbar_width", type="int", default=16)
 
     # DMA options
     parser.add_option("--dma_outstanding_requests", type="int", default=32)
+    parser.add_option("--bus_bw", type="int", default=16)
 
     # Aladdin Options
     parser.add_option("--accel_cfg_file", default=None,

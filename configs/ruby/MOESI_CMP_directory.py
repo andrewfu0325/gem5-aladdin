@@ -33,6 +33,7 @@ from m5.objects import *
 from m5.defines import buildEnv
 from Ruby import create_topology
 from Ruby import send_evicts
+from Cluster import Cluster 
 
 #
 # Note: the L1 Cache latency is only used by the sequencer on fast path hits
@@ -74,9 +75,11 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
     #
     #l2_bits = int(math.log(options.num_l2caches, 2))
     block_size_bits = int(math.log(options.cacheline_size, 2))
-    print options.num_cpus / 4 + (1 if options.num_cpus % 4 else 0)
     # Add one L2 cache for every 4-additional cores
     assert(options.num_l2caches == options.num_cpus / 4 + (1 if options.num_cpus % 4 else 0))
+
+    cpu_clusters = [Cluster() for i in xrange(options.num_l2caches)]
+    dir_cluster = Cluster()
 
     for i in xrange(options.num_cpus):
         #
@@ -85,6 +88,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
 
         # Group 4 cores into one clutser
         ClusterNum = i / 4;
+
         l1i_cache = L1Cache(size = options.l1i_size,
                             assoc = options.l1i_assoc,
                             start_index_bit = block_size_bits,
@@ -92,7 +96,11 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                             dataArrayBanks = options.l1i_banks,
                             tagArrayBanks = options.l1i_banks,
                             resourceStalls = True)
-        l1d_cache = L1Cache(size = options.l1d_size,
+        if i == 0:
+            l1d_size = options.sweep_l1d_size
+        else:
+            l1d_size = options.l1d_size
+        l1d_cache = L1Cache(size = l1d_size,
                             assoc = options.l1d_assoc,
                             start_index_bit = block_size_bits,
                             is_icache = False,
@@ -130,6 +138,9 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         l1_cntrl.requestToL1Cache =  ruby_system.network.master
         l1_cntrl.responseToL1Cache =  ruby_system.network.master
 
+        # Add l1_cntrl to cpu_cluster for later CrossBar creation
+        cpu_clusters[ClusterNum].add(l1_cntrl)
+
     # Add accelerators to Ruby interconnection
     
     for i in xrange(len(system.datapaths)):
@@ -137,6 +148,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         # First create the Ruby objects associated with this cpu
         #
         ClusterNum = i / 4;
+
         l1i_cache = L1Cache(size = system.datapaths[i].cacheSize,
                             assoc = options.l1i_assoc,
                             start_index_bit = block_size_bits,
@@ -182,21 +194,20 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         accel_l1_cntrl.requestToL1Cache =  ruby_system.network.master
         accel_l1_cntrl.responseToL1Cache =  ruby_system.network.master
     
-
-
+        # Add accel_l1_cntrl to corresponding cpu_cluster
+        cpu_clusters[ClusterNum].add(accel_l1_cntrl)
 
 
     #l2_index_start = block_size_bits + l2_bits
     l2_index_start = block_size_bits
 
-    print "# of CPUs", options.num_cpus
-    print "# of L2 caches", options.num_l2caches
     for i in xrange(options.num_l2caches):
         #
         # First create the Ruby objects associated with this cpu
         #
+
         l2_cache = L2Cache(size = options.l2_size,
-                           tagAccessLatency = 2,
+                           tagAccessLatency = options.l2_hit_latency,
                            dataAccessLatency = options.l2_hit_latency,
                            assoc = options.l2_assoc,
                            start_index_bit = l2_index_start,
@@ -221,6 +232,10 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         l2_cntrl.GlobalRequestToL2Cache = ruby_system.network.master
         l2_cntrl.L1RequestToL2Cache = ruby_system.network.master
         l2_cntrl.responseToL2Cache = ruby_system.network.master
+
+        # Add l2_cntrl to corresponding cpu_cluster
+        #cpu_clusters[i].add(l2_cntrl)
+        dir_cluster.add(l2_cntrl)
 
 
     phys_mem_size = sum(map(lambda r: r.size(), system.mem_ranges))
@@ -251,7 +266,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
     for i in xrange(options.num_dirs):
 
         pf = RubyCache(
-            tagAccessLatency = 1,
+            tagAccessLatency = options.dir_latency,
             dataAccessLatency = options.dir_latency,
             dataArrayBanks = options.dir_banks,
             tagArrayBanks = options.dir_banks,
@@ -278,6 +293,8 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         dir_cntrl.responseFromDir = ruby_system.network.slave
         dir_cntrl.forwardFromDir = ruby_system.network.slave
 
+        dir_cluster.add(dir_cntrl)
+
 
     for i, dma_port in enumerate(dma_ports):
         #
@@ -302,6 +319,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         dma_cntrl.reqToDir = ruby_system.network.slave
         dma_cntrl.respToDir = ruby_system.network.slave
 
+        dir_cluster.add(dma_cntrl)
 
     all_cntrls = l1_cntrl_nodes + \
                  accel_l1_cntrl_nodes + \
@@ -325,5 +343,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
 
         all_cntrls = all_cntrls + [io_controller]
 
-    topology = create_topology(all_cntrls, options)
-    return (cpu_sequencers, accel_sequencers,dir_cntrl_nodes, dma_cntrl_nodes, topology)
+    for i in xrange(len(cpu_clusters)):
+        dir_cluster.add(cpu_clusters[i]) 
+
+    return (cpu_sequencers, accel_sequencers,dir_cntrl_nodes, dma_cntrl_nodes, dir_cluster)

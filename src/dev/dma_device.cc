@@ -48,6 +48,10 @@
 #include "dev/dma_device.hh"
 #include "sim/system.hh"
 
+extern int NumDMAReq;
+extern std::map<uint64_t, uint64_t> ReqLatency;
+std::unordered_set<uint64_t> Evictions;
+
 DmaPort::DmaPort(MemObject *dev, System *s, unsigned max_req,
                  unsigned _chunkSize, bool _multiChannel,
                  bool _invalidateOnWrite)
@@ -78,6 +82,8 @@ DmaPort::handleResp(PacketPtr pkt, Tick delay)
     DmaReqState *state = dynamic_cast<DmaReqState*>(pkt->senderState);
     assert(state);
 
+    assert(ReqLatency.find(pkt->getAddr()) != ReqLatency.end());
+    ReqLatency[pkt->getAddr()] = (curTick() - ReqLatency[pkt->getAddr()]) / 1000; 
     DPRINTF(DMA, "Received response %s for addr: %#x, addr: %#x size: %d nb: %d,"  \
             " tot: %d sched %d outstanding:%u\n",
             pkt->cmdString(), state->addr,
@@ -228,7 +234,7 @@ DmaPort::dmaAction(Packet::Command cmd, Addr addr, int size, Event *event,
 
         pkt->senderState = reqState;
 
-        DPRINTF(DMA, "--Queuing DMA for addr: %#x size: %d in channel %d\n", gen.addr(),
+        DPRINTF(DMA, "--Queuing Cache DMA for addr: %#x size: %d in channel %d\n", gen.addr(),
                 gen.size(), channel_idx);
         queueDma(channel_idx, pkt);
     }
@@ -260,6 +266,12 @@ DmaPort::trySendTimingReq()
     
     PacketPtr pkt = transmitList[currChannelIdx].front();
 
+    MemCmd cmd = pkt->cmd;
+    if(cmd == MemCmd::ReadReq && Evictions.find(pkt->getAddr()) != Evictions.end()) {
+//        cmd = MemCmd::ReadFromDRAMReq;
+    }
+    pkt->cmd = cmd;
+    
     DPRINTF(DMA, "Trying to send %s addr %#x of size %d\n", pkt->cmdString(),
             pkt->getAddr(), pkt->req->getSize());
 
@@ -267,6 +279,12 @@ DmaPort::trySendTimingReq()
     if (!inRetry) {
         // pop the first packet in the current channel
         transmitList[currChannelIdx].pop_front();
+
+        NumDMAReq++;
+        assert(ReqLatency.find(pkt->getAddr()) == ReqLatency.end());
+
+        ReqLatency[pkt->getAddr()] = curTick();
+
         DPRINTF(DMA,
                "Sent %s addr %#x with size %d from channel %d. \n",
                 pkt->cmdString(),

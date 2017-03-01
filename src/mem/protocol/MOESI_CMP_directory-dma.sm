@@ -29,9 +29,9 @@
 
 machine(DMA, "DMA Controller")
     : DMASequencer * dma_sequencer;
-      Cycles request_latency := 14;
-      Cycles response_latency := 14;
-      Cycles to_memory_controller_latency := 1;
+      Cycles request_latency := 6;
+      Cycles response_latency := 1;
+      Cycles to_memory_controller_latency := 6;
 
       MessageBuffer * responseFromDir, network="From", virtual_network="2",
             ordered="false", vnet_type="response";

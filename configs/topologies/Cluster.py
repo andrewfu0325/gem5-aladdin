@@ -27,9 +27,10 @@
 # Authors: Jason Power
 
 
-from BaseTopology import BaseTopology
+from BaseTopology import SimpleTopology
+from m5.objects import *
 
-class Cluster(BaseTopology):
+class Cluster(SimpleTopology):
     """ A cluster is a group of nodes which are all one hop from eachother
         Clusters can also contain other clusters
         When creating this kind of topology, return a single cluster (usually
@@ -87,8 +88,9 @@ class Cluster(BaseTopology):
 
                 # connect this cluster to the router
                 link = IntLink(link_id=self.num_int_links(), node_a=self.router,
-                        node_b=node.router)
+                        node_b=node.router, bandwidth_factor = 4096, latency=2)
 
+                '''
                 if node.extBW:
                     link.bandwidth_factor = node.extBW
 
@@ -101,19 +103,33 @@ class Cluster(BaseTopology):
                     link.latency = node.extLatency
                 elif self.intLatency:
                     link.latency = self.intLatency
+                '''
 
                 network.int_links.append(link)
             else:
+                router = self.router
+                if type(node) == L1Cache_Controller:
+                  bw = 4096
+                  delay = 1
+                elif type(node) == L2Cache_Controller:
+                  bw = 4096
+                  delay = 2
+                elif type(node) == Directory_Controller:
+                  bw = 4096
+                  delay = 6
+                elif type(node) == DMA_Controller:
+                  bw = options.bus_bw
+                  delay = 6
+                link = ExtLink(link_id=self.num_ext_links(), ext_node=node,
+                        int_node=router, bandwidth_factor=bw, latency=delay)
                 # node is just a controller,
                 # connect it to the router via a ext_link
-                link = ExtLink(link_id=self.num_ext_links(), ext_node=node,
-                        int_node=self.router)
-
+                '''
                 if self.intBW:
                     link.bandwidth_factor = self.intBW
                 if self.intLatency:
                     link.latency = self.intLatency
-
+                '''
                 network.ext_links.append(link)
 
     def __len__(self):

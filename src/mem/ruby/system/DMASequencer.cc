@@ -317,7 +317,6 @@ DMASequencer::makeRequest(PacketPtr pkt)
     }
 
     m_outstanding_count++;
-    printf("DMASeq: %d/%d\n", m_outstanding_count, m_max_outstanding_requests);
 
     assert(m_mandatory_q_ptr != NULL);
     m_mandatory_q_ptr->enqueue(msg);
