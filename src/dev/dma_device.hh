@@ -57,8 +57,38 @@
 
 /* Maximum of DMA channels*/
 #define MAX_CHANNELS 20
+
 class DmaPort : public MasterPort
 {
+  public:
+
+    struct DmaReqState : public Packet::SenderState
+    {
+        /** Event to call on the device when this transaction (all packets)
+         * complete. */
+        Event *completionEvent;
+
+        /** Total number of bytes that this transaction involves. */
+        const Addr totBytes;
+
+        /** Number of bytes that have been acked for this transaction. */
+        Addr numBytes;
+
+        /** DMA request address for this transaction. */
+        Addr addr;
+
+        /** Amount to delay completion of dma by */
+        const Tick delay;
+
+        DmaReqState(Event *ce, Addr tb, Addr _addr, Tick _delay)
+            : completionEvent(ce), totBytes(tb),
+              numBytes(0), addr(_addr), delay(_delay)
+        {}
+
+    };
+
+    friend class HybridDatapath;
+
   private:
 
     /**
@@ -90,30 +120,6 @@ class DmaPort : public MasterPort
      */
     void handleResp(PacketPtr pkt, Tick delay = 0);
 
-    struct DmaReqState : public Packet::SenderState
-    {
-        /** Event to call on the device when this transaction (all packets)
-         * complete. */
-        Event *completionEvent;
-
-        /** Total number of bytes that this transaction involves. */
-        const Addr totBytes;
-
-        /** Number of bytes that have been acked for this transaction. */
-        Addr numBytes;
-
-        /** DMA request address for this transaction. */
-        Addr addr;
-
-        /** Amount to delay completion of dma by */
-        const Tick delay;
-
-        DmaReqState(Event *ce, Addr tb, Addr _addr, Tick _delay)
-            : completionEvent(ce), totBytes(tb),
-              numBytes(0), addr(_addr), delay(_delay)
-        {}
-
-    };
 
     /** The device that owns this port. */
     MemObject *device;
@@ -121,7 +127,7 @@ class DmaPort : public MasterPort
     /** Each deque represents a memory channel that never does any insertion or
      * removal in the middle. A vector of deques are used to represent
      * multi-chanel DMAs that requests across channels can be interleaved. */
-    std::vector< std::deque<PacketPtr> > transmitList;
+    std::vector<std::pair<DmaReqState *, std::deque<PacketPtr> > > transmitList;
 
     /** Event used to schedule a future sending from the transmit list. */
     EventWrapper<DmaPort, &DmaPort::sendDma> sendEvent;
@@ -170,6 +176,7 @@ class DmaPort : public MasterPort
     void recvReqRetry() ;
 
     void queueDma(unsigned channel_index, PacketPtr pkt);
+    void switchToNextChannel();
 
     Addr getPacketAddr(PacketPtr pkt);
 
@@ -185,10 +192,16 @@ class DmaPort : public MasterPort
 
     RequestPtr dmaAction(Packet::Command cmd, Addr addr, int size, Event *event,
                          uint8_t *data, Tick delay, Request::Flags flag = 0);
+    RequestPtr dmaReqOnChannel(Packet::Command cmd, Addr addr, int size,
+                               uint8_t *data, Tick delay, DmaReqState *reqState,
+                               Request::Flags flag = 0, unsigned channel_idx = 0);
+    unsigned addNewChannel(DmaReqState *reqState);
 
     bool dmaPending() const { return pendingCount > 0; }
 
     unsigned int drain(DrainManager *drainManger);
+
+    MasterID getMasterID(){return masterId;}
 };
 
 class DmaDevice : public PioDevice

@@ -76,10 +76,11 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
     #l2_bits = int(math.log(options.num_l2caches, 2))
     block_size_bits = int(math.log(options.cacheline_size, 2))
     # Add one L2 cache for every 4-additional cores
-    assert(options.num_l2caches == options.num_cpus / 4 + (1 if options.num_cpus % 4 else 0))
+    #assert(options.num_l2caches == options.num_cpus / 4 + (1 if options.num_cpus % 4 else 0))
 
     cpu_clusters = [Cluster() for i in xrange(options.num_l2caches)]
     dir_cluster = Cluster()
+    ClusterNum = 0;
 
     for i in xrange(options.num_cpus):
         #
@@ -87,7 +88,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         #
 
         # Group 4 cores into one clutser
-        ClusterNum = i / 4;
+        # ClusterNum = i / 4;
 
         l1i_cache = L1Cache(size = options.l1i_size,
                             assoc = options.l1i_assoc,
@@ -96,11 +97,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                             dataArrayBanks = options.l1i_banks,
                             tagArrayBanks = options.l1i_banks,
                             resourceStalls = True)
-        if i == 0:
-            l1d_size = options.sweep_l1d_size
-        else:
-            l1d_size = options.l1d_size
-        l1d_cache = L1Cache(size = l1d_size,
+        l1d_cache = L1Cache(size = options.l1d_size,
                             assoc = options.l1d_assoc,
                             start_index_bit = block_size_bits,
                             is_icache = False,
@@ -147,7 +144,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         #
         # First create the Ruby objects associated with this cpu
         #
-        ClusterNum = i / 4;
+        #ClusterNum = i / 4;
 
         l1i_cache = L1Cache(size = system.datapaths[i].cacheSize,
                             assoc = options.l1i_assoc,

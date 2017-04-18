@@ -61,11 +61,11 @@ class TBETable
     // Print cache contents
     void print(std::ostream& out) const;
     void dmaReadHit(const Address& address){
-        printf("Hit: 0x%x\n", address.getAddress());
+//        printf("Hit: 0x%x\n", address.getAddress());
         DmaReadHit++;
     }
     void dmaReadMiss(const Address& address){
-        printf("Miss: 0x%x\n", address.getAddress());
+//        printf("Miss: 0x%x\n", address.getAddress());
         DmaReadMiss++;
     }
     void outstandingReq(){
@@ -73,9 +73,9 @@ class TBETable
     }
     // Record Evictions
     void insertEviction(const Address& address){
-            printf("Maximum size of set: %u\n", Evictions.max_size());
-            printf("size of set: %u\n", Evictions.size());
-            printf("Evict: 0x%x\n", address.getAddress());
+ //           printf("Maximum size of set: %u\n", Evictions.max_size());
+ //           printf("size of set: %u\n", Evictions.size());
+ //           printf("Evict: 0x%x\n", address.getAddress());
             Evictions.insert(address.getAddress());
     }
   private:

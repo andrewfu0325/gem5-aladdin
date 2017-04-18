@@ -190,7 +190,6 @@ class MemCmd
     bool isInvalidate() const      { return testCmdAttrib(IsInvalidate); }
     bool isWriteInvalidate() const { return testCmdAttrib(IsWrite) &&
                                             testCmdAttrib(IsInvalidate); }
-
     /**
      * Check if this particular packet type carries payload data. Note
      * that this does not reflect if the data pointer of the packet is
@@ -279,6 +278,10 @@ class Packet : public Printable
     /// A pointer to the original request.
     const RequestPtr req;
 
+    /// The address of the request.  This address could be virtual or
+    /// physical, depending on the system configuration.
+    Addr addr;
+
   private:
    /**
     * A pointer to the data being transfered.  It can be differnt
@@ -289,9 +292,6 @@ class Packet : public Printable
     */
     PacketDataPtr data;
 
-    /// The address of the request.  This address could be virtual or
-    /// physical, depending on the system configuration.
-    Addr addr;
 
     /// True if the request targets the secure memory space.
     bool _isSecure;

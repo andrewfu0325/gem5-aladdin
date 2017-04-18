@@ -204,6 +204,7 @@ if options.accel_cfg_file:
     datapath = HybridDatapath(
         clk_domain = clk_domain,
         benchName = config.get(accel, "bench_name"),
+        outputPrefix = config.get(accel, "bench_name"),
         traceFileName = config.get(accel, "trace_file_name"),
         configFileName = config.get(accel, "config_file_name"),
         acceleratorName = "datapath%d" % config.getint(accel, "accelerator_id"),      
@@ -214,7 +215,6 @@ if options.accel_cfg_file:
         enableStatsDump = options.enable_stats_dump,
         executeStandalone = (np == 0))
     datapath.dmaSetupOverhead = config.getint(accel, "dma_setup_overhead")
-    #datapath.maxDmaRequests = config.getint(accel, "max_dma_requests")
     datapath.maxDmaRequests = options.dma_outstanding_requests
     datapath.multiChannelDMA = config.getboolean(accel, "dma_multi_channel")
     datapath.dmaChunkSize = config.getint(accel, "dma_chunk_size")
@@ -222,24 +222,24 @@ if options.accel_cfg_file:
     datapath.ignoreCacheFlush = config.getboolean(accel, "ignore_cache_flush")
     datapath.invalidateOnDmaStore = config.getboolean(accel, "invalidate_on_dma_store")
     datapath.dmaFetchFromDRAM = config.getboolean(accel, "dma_fetch_from_dram")
+    datapath.isPerfectTranslation = config.getboolean(accel, "is_perfect_translation")
     if memory_type == "cache":
-      options.cacheline_size = config.getint(accel, "cache_line_sz")
       datapath.cacheSize = config.get(accel, "cache_size")
       datapath.cacheBandwidth = config.get(accel, "cache_bandwidth")
       datapath.cacheQueueSize = config.get(accel, "cache_queue_size")
       datapath.cacheAssoc = config.getint(accel, "cache_assoc")
       datapath.cacheHitLatency = config.getint(accel, "cache_hit_latency")
-      datapath.cacheLineSize = config.getint(accel, "cache_line_sz")
+      datapath.cacheLineSize = options.cacheline_size
       datapath.cactiCacheConfig = config.get(accel, "cacti_cache_config")
-      datapath.tlbEntries = config.getint(accel, "tlb_entries")
-      datapath.tlbAssoc = config.getint(accel, "tlb_assoc")
-      datapath.tlbHitLatency = config.getint(accel, "tlb_hit_latency")
-      datapath.tlbMissLatency = config.getint(accel, "tlb_miss_latency")
-      datapath.tlbCactiConfig = config.get(accel, "cacti_tlb_config")
-      datapath.tlbPageBytes = config.getint(accel, "tlb_page_size")
-      datapath.numOutStandingWalks = config.getint(
-          accel, "tlb_max_outstanding_walks")
-      datapath.tlbBandwidth = config.getint(accel, "tlb_bandwidth")
+    datapath.tlbEntries = config.getint(accel, "tlb_entries")
+    datapath.tlbAssoc = config.getint(accel, "tlb_assoc")
+    datapath.tlbHitLatency = config.getint(accel, "tlb_hit_latency")
+    datapath.tlbMissLatency = config.getint(accel, "tlb_miss_latency")
+    datapath.tlbCactiConfig = config.get(accel, "cacti_tlb_config")
+    datapath.tlbPageBytes = config.getint(accel, "tlb_page_size")
+    datapath.numOutStandingWalks = config.getint(
+        accel, "tlb_max_outstanding_walks")
+    datapath.tlbBandwidth = config.getint(accel, "tlb_bandwidth")
     if (memory_type != "cache" and memory_type != "spad"):
       fatal("Aladdin configuration file specified invalid memory type %s for "
             "accelerator %s." % (memory_type, accel))

@@ -202,7 +202,7 @@ Throttle::wakeup()
         // We have extra bandwidth and our output buffer was
         // available, so we must not have anything else to do until
         // another message arrives.
-        DPRINTF(RubyNetwork, "%s not scheduled again\n", *this);
+        DPRINTF(RubyNetwork, "%s not scheduled again(bw_remaining: %d)\n", *this, bw_remaining);
     } else {
         DPRINTF(RubyNetwork, "%s scheduled again\n", *this);
 

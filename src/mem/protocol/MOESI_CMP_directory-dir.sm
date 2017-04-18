@@ -419,7 +419,6 @@ machine(Directory, "Directory protocol")
   }
 
   action(cc_clearSharers, "\c", desc="Clear the sharers field") {
-    //TBEs.insertEviction(address);
     getDirectoryEntry(address).Sharers.clear();
   }
 
