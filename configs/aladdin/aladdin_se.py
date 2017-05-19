@@ -185,6 +185,7 @@ if np > 0:
   # frequency.
   for cpu in system.cpu:
       cpu.clk_domain = system.cpu_clk_domain
+      cpu.dtb.size = 16
 
 if options.accel_cfg_file:
   config = ConfigParser.SafeConfigParser()
@@ -223,6 +224,7 @@ if options.accel_cfg_file:
     datapath.invalidateOnDmaStore = config.getboolean(accel, "invalidate_on_dma_store")
     datapath.dmaFetchFromDRAM = config.getboolean(accel, "dma_fetch_from_dram")
     datapath.isPerfectTranslation = config.getboolean(accel, "is_perfect_translation")
+    datapath.hostPageWalk = config.getboolean(accel, "host_page_walk")
     if memory_type == "cache":
       datapath.cacheSize = config.get(accel, "cache_size")
       datapath.cacheBandwidth = config.get(accel, "cache_bandwidth")
@@ -233,6 +235,7 @@ if options.accel_cfg_file:
       datapath.cactiCacheConfig = config.get(accel, "cacti_cache_config")
     datapath.tlbEntries = config.getint(accel, "tlb_entries")
     datapath.tlbAssoc = config.getint(accel, "tlb_assoc")
+    datapath.tlbAccessLatency = config.getint(accel, "tlb_access_latency")
     datapath.tlbHitLatency = config.getint(accel, "tlb_hit_latency")
     datapath.tlbMissLatency = config.getint(accel, "tlb_miss_latency")
     datapath.tlbCactiConfig = config.get(accel, "cacti_tlb_config")

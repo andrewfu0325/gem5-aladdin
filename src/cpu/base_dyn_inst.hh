@@ -1005,7 +1005,6 @@ BaseDynInst<Impl>::initiateTranslation(RequestPtr req, RequestPtr sreqLow,
         // One translation if the request isn't split.
         DataTranslation<BaseDynInstPtr> *trans =
             new DataTranslation<BaseDynInstPtr>(this, state);
-
         cpu->dtb->translateTiming(req, thread->getTC(), trans, mode);
 
         if (!translationCompleted()) {

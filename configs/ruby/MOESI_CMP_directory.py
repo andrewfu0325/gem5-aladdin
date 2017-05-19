@@ -96,14 +96,14 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                             is_icache = True,
                             dataArrayBanks = options.l1i_banks,
                             tagArrayBanks = options.l1i_banks,
-                            resourceStalls = True)
+                            resourceStalls = False)
         l1d_cache = L1Cache(size = options.l1d_size,
                             assoc = options.l1d_assoc,
                             start_index_bit = block_size_bits,
                             is_icache = False,
                             dataArrayBanks = options.l1d_banks,
                             tagArrayBanks = options.l1d_banks,
-                            resourceStalls = True)
+                            resourceStalls = False)
 
         l1_cntrl = L1Cache_Controller(version = i,
                                       L1Icache = l1i_cache,
@@ -152,14 +152,14 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                             is_icache = True,
                             dataArrayBanks = options.l1i_banks,
                             tagArrayBanks = options.l1i_banks,
-                            resourceStalls = True)
+                            resourceStalls = False)
         accel_l1d_cache = L1Cache(size = system.datapaths[i].cacheSize,
                             assoc = options.l1d_assoc,
                             start_index_bit = block_size_bits,
                             is_icache = False,
                             dataArrayBanks = options.l1d_banks,
                             tagArrayBanks = options.l1d_banks,
-                            resourceStalls = True)
+                            resourceStalls = False)
 
         accel_l1_cntrl = L1Cache_Controller(version = i + options.num_cpus,
                                       L1Icache = l1i_cache,
@@ -210,7 +210,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                            start_index_bit = l2_index_start,
                            dataArrayBanks = options.l2_banks,
                            tagArrayBanks = options.l2_banks,
-                           resourceStalls = True)
+                           resourceStalls = False)
 
         l2_cntrl = L2Cache_Controller(version = i,
                                       L2cache = l2_cache,
@@ -270,7 +270,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
             latency = 1, # dummy
     	      size = '1GB',
             assoc = options.dir_assoc,
-            resourceStalls = True)
+            resourceStalls = False)
 
         dir_cntrl = Directory_Controller(version = i,
                                          directory = RubyDirectoryMemory(

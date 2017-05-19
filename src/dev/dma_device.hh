@@ -80,9 +80,12 @@ class DmaPort : public MasterPort
         /** Amount to delay completion of dma by */
         const Tick delay;
 
+        /** Is initialized by the first packet */
+        bool isSent;
+
         DmaReqState(Event *ce, Addr tb, Addr _addr, Tick _delay)
             : completionEvent(ce), totBytes(tb),
-              numBytes(0), addr(_addr), delay(_delay)
+              numBytes(0), addr(_addr), delay(_delay), isSent(false)
         {}
 
     };

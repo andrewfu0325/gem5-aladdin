@@ -424,7 +424,6 @@ TimingSimpleCPU::readMem(Addr addr, uint8_t *data,
             new DataTranslation<TimingSimpleCPU *>(this, state, 0);
         DataTranslation<TimingSimpleCPU *> *trans2 =
             new DataTranslation<TimingSimpleCPU *>(this, state, 1);
-
         thread->dtb->translateTiming(req1, tc, trans1, mode);
         thread->dtb->translateTiming(req2, tc, trans2, mode);
     } else {
