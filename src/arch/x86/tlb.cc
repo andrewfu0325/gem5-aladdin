@@ -331,7 +331,7 @@ TLB::translate(RequestPtr req, ThreadContext *tc, Translation *translation,
             }
         }
         if (m5Reg.submode != SixtyFourBitMode ||
-                (flags & (AddrSizeFlagBit << FlagShift)))
+                (flags & (AddrSizeFlagBit << FlagShift))) 
             vaddr &= mask(32);
         // If paging is enabled, do the translation.
         if (m5Reg.paging) {
@@ -352,6 +352,9 @@ TLB::translate(RequestPtr req, ThreadContext *tc, Translation *translation,
                     DPRINTF(TLB, "Handling a TLB miss for "
                             "address %#x at pc %#x.\n",
                             vaddr, tc->instAddr());
+
+                    // Only for SE mode to simulate the MMU cache
+                    mmuCache->pageWalker(vaddr);
 
                     Process *p = tc->getProcessPtr();
                     TlbEntry newEntry;

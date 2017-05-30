@@ -142,7 +142,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
     
     for i in xrange(len(system.datapaths)):
         #
-        # First create the Ruby objects associated with this cpu
+        # First create the Ruby objects associated with this accelerator
         #
         #ClusterNum = i / 4;
 
@@ -297,6 +297,7 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         #
         # Create the Ruby objects associated with the dma controller
         #
+
         dma_seq = DMASequencer(version = i,
                                ruby_system = ruby_system,
                                slave = dma_port,

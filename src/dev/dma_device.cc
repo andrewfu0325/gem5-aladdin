@@ -49,6 +49,7 @@
 #include "sim/system.hh"
 
 extern int NumDMAReq;
+extern int DmaRead;
 extern std::map<uint64_t, uint64_t> ReqLatency;
 std::unordered_set<uint64_t> Evictions;
 
@@ -82,8 +83,6 @@ DmaPort::handleResp(PacketPtr pkt, Tick delay)
     DmaReqState *state = dynamic_cast<DmaReqState*>(pkt->senderState);
     assert(state);
 
-    assert(ReqLatency.find(pkt->getAddr()) != ReqLatency.end());
-    ReqLatency[pkt->getAddr()] = (curTick() - ReqLatency[pkt->getAddr()]) / 1000; 
     DPRINTF(DMA, "Received response %s for addr: %#x, addr: %#x size: %d nb: %d,"  \
             " tot: %d sched %d outstanding:%u\n",
             pkt->cmdString(), state->addr,
@@ -375,16 +374,20 @@ DmaPort::trySendTimingReq()
 
     DPRINTF(DMA, "Trying to send %s addr %#x of size %d\n", pkt->cmdString(),
             pkt->getAddr(), pkt->req->getSize());
-
+    if(pkt->isRead() && ReqLatency.find(pkt->getAddr()) == ReqLatency.end()) {
+      ReqLatency.insert(std::make_pair(pkt->getAddr(), curTick()));
+      printf("Start DMA Req cycles 0x%x: %u\n", pkt->getAddr(), ReqLatency[pkt->getAddr()]);
+    }
     inRetry = !sendTimingReq(pkt);
     if (!inRetry) {
         // pop the first packet in the current channel
         transmitList[currChannelIdx].second.pop_front();
         DPRINTF(DMA, "Channel %d remaining requests: %d\n", currChannelIdx, transmitList[currChannelIdx].second.size());
-
+        if(pkt->isRead()) {
+          DmaRead++;
+        }
         NumDMAReq++;
 
-        ReqLatency[pkt->getAddr()] = curTick();
 
         DPRINTF(DMA,
                "Sent %s addr %#x with size %d from channel %d. \n",

@@ -255,7 +255,6 @@ CacheMemory::allocate(const Address& address, AbstractCacheEntry* entry)
             m_tag_index[address] = i;
 
             m_replacementPolicy_ptr->touch(cacheSet, i, curTick());
-
             return entry;
         }
     }
@@ -310,6 +309,7 @@ CacheMemory::lookup(const Address& address) const
     if(loc == -1) return NULL;
     return m_cache[cacheSet][loc];
 }
+
 
 // Sets the most recently used bit for a cache block
 void

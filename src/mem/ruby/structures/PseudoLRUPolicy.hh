@@ -47,25 +47,25 @@
 class PseudoLRUPolicy : public AbstractReplacementPolicy
 {
   public:
-    PseudoLRUPolicy(int64 num_sets, int64 assoc);
+    PseudoLRUPolicy(uint64_t num_sets, uint64_t assoc);
     ~PseudoLRUPolicy();
 
-    void touch(int64 set, int64 way, Tick time);
-    int64 getVictim(int64 set) const;
+    void touch(uint64_t set, uint64_t way, Tick time);
+    uint64_t getVictim(uint64_t set) const;
 
   private:
     unsigned int m_effective_assoc;    /** nearest (to ceiling) power of 2 */
     unsigned int m_num_levels;         /** number of levels in the tree */
-    uint64* m_trees;                   /** bit representation of the
+    uint64_t* m_trees;                   /** bit representation of the
                                         * trees, one for each set */
 };
 
 inline
-PseudoLRUPolicy::PseudoLRUPolicy(int64 num_sets, int64 assoc)
+PseudoLRUPolicy::PseudoLRUPolicy(uint64_t num_sets, uint64_t assoc)
     : AbstractReplacementPolicy(num_sets, assoc)
 {
     // associativity cannot exceed capacity of tree representation
-    assert(num_sets > 0 && assoc > 1 && assoc <= sizeof(uint64)*4);
+    assert(num_sets > 0 && assoc > 1 && assoc <= sizeof(uint64_t)*4);
 
     m_trees = NULL;
     m_num_levels = 0;
@@ -82,7 +82,7 @@ PseudoLRUPolicy::PseudoLRUPolicy(int64 num_sets, int64 assoc)
         m_num_levels++;
     }
     assert(m_num_levels < sizeof(unsigned int)*4);
-    m_trees = new uint64[m_num_sets];
+    m_trees = new uint64_t[m_num_sets];
     for (unsigned i = 0; i < m_num_sets; i++) {
         m_trees[i] = 0;
     }
@@ -96,7 +96,7 @@ PseudoLRUPolicy::~PseudoLRUPolicy()
 }
 
 inline void
-PseudoLRUPolicy::touch(int64 set, int64 index, Tick time)
+PseudoLRUPolicy::touch(uint64_t set, uint64_t index, Tick time)
 {
     assert(index >= 0 && index < m_assoc);
     assert(set >= 0 && set < m_num_sets);
@@ -114,11 +114,11 @@ PseudoLRUPolicy::touch(int64 set, int64 index, Tick time)
     m_last_ref_ptr[set][index] = time;
 }
 
-inline int64
-PseudoLRUPolicy::getVictim(int64 set) const
+inline uint64_t
+PseudoLRUPolicy::getVictim(uint64_t set) const
 {
     // assert(m_assoc != 0);
-    int64 index = 0;
+    uint64_t index = 0;
 
     int tree_index = 0;
     int node_val;

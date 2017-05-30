@@ -180,7 +180,7 @@ system.cpu_clk_domain = SrcClockDomain(clock = options.cpu_clock,
                                        voltage_domain =
                                        system.cpu_voltage_domain)
 if np > 0:
-  system.cpu = [CPUClass(cpu_id=i) for i in xrange(np)]
+  system.cpu = [CPUClass(cpu_id=i, dtb=X86TLB(size=16), itb=X86TLB(size=16)) for i in xrange(np)]
   # All cpus belong to a common cpu_clk_domain, therefore running at a common
   # frequency.
   for cpu in system.cpu:

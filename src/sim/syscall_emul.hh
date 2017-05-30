@@ -263,6 +263,9 @@ SyscallReturn fcntl64Func(SyscallDesc *desc, int num,
 // Aladdin handler function shared between 32-bit and 64-bit fcntl emulations.
 void fcntlAladdinHandler(LiveProcess *process, ThreadContext *tc);
 
+// Our cache forwarding mechanism for ACC-Task Data shared between 32-bit and 64-bit fcntl emulations.
+void fcntlRegAccTaskDataForCache(LiveProcess *process, ThreadContext *tc);
+
 /// Target setuid() handler.
 SyscallReturn setuidFunc(SyscallDesc *desc, int num,
                                LiveProcess *p, ThreadContext *tc);

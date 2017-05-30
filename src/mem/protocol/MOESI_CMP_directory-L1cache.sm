@@ -111,6 +111,7 @@ machine(L1Cache, "Directory protocol")
   structure(Entry, desc="...", interface="AbstractCacheEntry") {
     State CacheState,        desc="cache state";
     bool Dirty,              desc="Is the data dirty (different than memory)?";
+    bool AccTaskData,        desc="Does the data belong to Accelerator?";
     DataBlock DataBlk,       desc="data for the block";
   }
 
@@ -394,6 +395,7 @@ machine(L1Cache, "Directory protocol")
 
           Entry L1Dcache_entry := getL1DCacheEntry(in_msg.LineAddress);
           if (is_valid(L1Dcache_entry)) {
+            // setAccTaskData(L1Dcache_entry.AccTaskData, in_msg.pkt);
             // The tag matches for the L1, so the L1 ask the L2 for it
             trigger(mandatory_request_type_to_event(in_msg.Type),
                     in_msg.LineAddress, L1Dcache_entry,
@@ -409,6 +411,7 @@ machine(L1Cache, "Directory protocol")
             }
             if (L1Dcache.cacheAvail(in_msg.LineAddress)) {
               // L1 does't have the line, but we have space for it in the L1 let's see if the L2 has it
+              // setAccTaskData(L1Dcache_entry.AccTaskData, in_msg.pkt);
               trigger(mandatory_request_type_to_event(in_msg.Type),
                       in_msg.LineAddress, L1Dcache_entry,
                       TBEs[in_msg.LineAddress]);
@@ -427,7 +430,6 @@ machine(L1Cache, "Directory protocol")
 
 
   // ACTIONS
-
   action(a_issueGETS, "a", desc="Issue GETS") {
     peek(mandatoryQueue_in, RubyRequest) {
       enqueue(requestNetwork_out, RequestMsg,  request_latency) {
@@ -825,6 +827,23 @@ machine(L1Cache, "Directory protocol")
     }
   }
 
+  // Acc will usually request data for a writeback
+  action(qq_sendWBDataFromTBEToAcc, "qa", desc="Send data from TBE to Acc") {
+    if(cache_entry.checkAccTaskData()) {
+      enqueue(responseNetwork_out, ResponseMsg, request_latency) {
+        assert(is_valid(tbe));
+        out_msg.Addr := cache_entry.getVirtAddr();
+        out_msg.Sender := machineID;
+        out_msg.SenderMachine := MachineType:L1Cache;
+        out_msg.Destination.add(getDmaID());
+        out_msg.Dirty := tbe.Dirty;
+        out_msg.Type := CoherenceResponseType:EVICTED_ACC_TASK_DATA;
+        out_msg.DataBlk := tbe.DataBlk;
+        out_msg.MessageSize := MessageSizeType:Writeback_Data;
+      }
+    }
+  }
+
   action(s_deallocateTBE, "s", desc="Deallocate TBE") {
     TBEs.deallocate(address);
     unset_tbe();
@@ -863,6 +882,12 @@ machine(L1Cache, "Directory protocol")
   action(ii_allocateL1DCacheBlock, "\i", desc="Set L1 D-cache tag equal to tag of block B.") {
     if ((is_invalid(cache_entry))) {
       set_cache_entry(L1Dcache.allocate(address, new Entry));
+    }
+  }
+
+  action(s_setVirtAddr, "sv", desc="Set L1 D-cache tag equal to tag of block B.") {
+    peek(mandatoryQueue_in, RubyRequest) {
+      cache_entry.setVirtAddr(in_msg.pkt);
     }
   }
 
@@ -929,6 +954,7 @@ machine(L1Cache, "Directory protocol")
     ii_allocateL1DCacheBlock;
     i_allocateTBE;
     a_issueGETS;
+    s_setVirtAddr;
     uu_profileDataMiss;
     k_popMandatoryQueue;
   }
@@ -945,6 +971,7 @@ machine(L1Cache, "Directory protocol")
     ii_allocateL1DCacheBlock;
     i_allocateTBE;
     b_issueGETX;
+    s_setVirtAddr;
     uu_profileDataMiss;
     k_popMandatoryQueue;
   }
@@ -961,6 +988,7 @@ machine(L1Cache, "Directory protocol")
   transition({S, SM, O, OM, MM, MM_W, M, M_W}, Load) {
     h_load_hit;
     uu_profileDataHit;
+    s_setVirtAddr;
     k_popMandatoryQueue;
   }
 
@@ -975,6 +1003,7 @@ machine(L1Cache, "Directory protocol")
     i_allocateTBE;
     b_issueGETX;
     uu_profileDataMiss;
+    s_setVirtAddr;
     k_popMandatoryQueue;
   }
 
@@ -982,7 +1011,6 @@ machine(L1Cache, "Directory protocol")
     i_allocateTBE;
     dd_issuePUTS;
     forward_eviction_to_cpu;
-    kk_deallocateL1CacheBlock;
   }
 
   transition(S, Inv, I) {
@@ -1007,6 +1035,7 @@ machine(L1Cache, "Directory protocol")
     i_allocateTBE;
     b_issueGETX;
     uu_profileDataMiss;
+    s_setVirtAddr;
     k_popMandatoryQueue;
   }
 
@@ -1014,7 +1043,6 @@ machine(L1Cache, "Directory protocol")
     i_allocateTBE;
     dd_issuePUTO;
     forward_eviction_to_cpu;
-    kk_deallocateL1CacheBlock;
   }
 
   transition(O, Fwd_GETX, I) {
@@ -1038,6 +1066,7 @@ machine(L1Cache, "Directory protocol")
   transition({MM, MM_W}, Store) {
     hh_store_hit;
     uu_profileDataHit;
+    s_setVirtAddr;
     k_popMandatoryQueue;
   }
 
@@ -1045,7 +1074,6 @@ machine(L1Cache, "Directory protocol")
     i_allocateTBE;
     d_issuePUTX;
     forward_eviction_to_cpu;
-    kk_deallocateL1CacheBlock;
   }
 
   transition(MM, Fwd_GETX, I) {
@@ -1070,12 +1098,14 @@ machine(L1Cache, "Directory protocol")
   transition(M, Store, MM) {
     hh_store_hit;
     uu_profileDataHit;
+    s_setVirtAddr;
     k_popMandatoryQueue;
   }
 
   transition(M_W, Store, MM_W) {
     hh_store_hit;
     uu_profileDataHit;
+    s_setVirtAddr;
     k_popMandatoryQueue;
   }
 
@@ -1083,7 +1113,6 @@ machine(L1Cache, "Directory protocol")
     i_allocateTBE;
     d_issuePUTX;
     forward_eviction_to_cpu;
-    kk_deallocateL1CacheBlock;
   }
 
   transition(M, Fwd_GETX, I) {
@@ -1265,6 +1294,8 @@ machine(L1Cache, "Directory protocol")
 
   transition({SI, OI, MI}, Writeback_Ack_Data, I) {
     qq_sendWBDataFromTBEToL2;  // always send data
+    qq_sendWBDataFromTBEToAcc;  // always send data
+    kk_deallocateL1CacheBlock;
     s_deallocateTBE;
     l_popForwardQueue;
   }

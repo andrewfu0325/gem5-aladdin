@@ -36,9 +36,15 @@
 #include <iostream>
 
 #include "base/misc.hh"
+#include "cpu/base.hh"
+#include "mem/packet.hh"
 #include "mem/protocol/AccessPermission.hh"
+#include "mem/request.hh"
 #include "mem/ruby/common/Address.hh"
 #include "mem/ruby/slicc_interface/AbstractEntry.hh"
+
+extern bool forwardAccTaskData;
+extern BaseCPU *cpuPtr;
 
 class DataBlock;
 
@@ -51,6 +57,10 @@ class AbstractCacheEntry : public AbstractEntry
     // Get/Set permission of the entry
     void changePermission(AccessPermission new_perm);
 
+    void setVirtAddr(Packet *pkt);
+    bool checkAccTaskData();
+    Address getVirtAddr();
+
     // The methods below are those called by ruby runtime, add when it
     // is absolutely necessary and should all be virtual function.
     virtual DataBlock& getDataBlk()
@@ -58,8 +68,10 @@ class AbstractCacheEntry : public AbstractEntry
 
 
     Address m_Address; // Address of this block, required by CacheMemory
+    Address m_vAddress; // Virtual address of this block, required by examining ACC-task data
     int m_locked; // Holds info whether the address is locked,
                   // required for implementing LL/SC
+    bool hasVaddr;
 };
 
 inline std::ostream&

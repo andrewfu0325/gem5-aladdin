@@ -45,6 +45,7 @@ structure(DataBlock, external = "yes", desc="..."){
 
 bool testAndRead(Address addr, DataBlock datablk, Packet *pkt);
 bool testAndWrite(Address addr, DataBlock datablk, Packet *pkt);
+void setAccTaskData(bool AccTaskData, Packet *pkt);
 
 // AccessPermission
 // The following five states define the access permission of all memory blocks.

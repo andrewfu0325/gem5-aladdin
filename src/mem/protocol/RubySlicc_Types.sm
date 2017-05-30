@@ -122,6 +122,7 @@ structure(RubyRequest, desc="...", interface="Message", external="yes") {
   RubyAccessMode AccessMode, desc="user/supervisor access type";
   int Size,                  desc="size in bytes of access";
   PrefetchBit Prefetch,      desc="Is this a prefetch request";
+  Packet pkt,                desc="the Packet pointer";
   int contextId,             desc="this goes away but must be replace with Nilay";
 }
 
@@ -139,6 +140,9 @@ structure (DirectoryMemory, external = "yes") {
 
 structure(AbstractCacheEntry, primitive="yes", external = "yes") {
   void changePermission(AccessPermission);
+  void setVirtAddr(Packet);
+  bool checkAccTaskData();
+  Address getVirtAddr();
 }
 
 structure (CacheMemory, external = "yes") {
@@ -168,6 +172,7 @@ structure (DMASequencer, external = "yes") {
   void ackCallback(Address);
   void dataCallback(DataBlock, Address);
   void recordRequestType(CacheRequestType);
+  void rubyGetEviction(DataBlock, Address);
 }
 
 structure (TimerTable, inport="yes", external = "yes") {

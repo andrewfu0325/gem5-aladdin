@@ -43,6 +43,7 @@
 #ifndef __ARCH_GENERIC_TLB_HH__
 #define __ARCH_GENERIC_TLB_HH__
 
+#include "arch/generic/mmu_cache.hh"
 #include "base/misc.hh"
 #include "mem/request.hh"
 #include "sim/sim_object.hh"
@@ -59,6 +60,9 @@ class BaseTLB : public SimObject
 
   public:
     enum Mode { Read, Write, Execute };
+
+    // Only for SE mode to simulate MMU 
+    MMUCache *mmuCache;
 
   public:
     virtual void demapPage(Addr vaddr, uint64_t asn) = 0;

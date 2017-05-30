@@ -44,6 +44,7 @@
  *          Rick Strong
  */
 
+#include "arch/generic/mmu_cache.hh"
 #include "arch/kernel_stats.hh"
 #include "config/the_isa.hh"
 #include "cpu/checker/cpu.hh"
@@ -155,8 +156,6 @@ FullO3CPU<Impl>::TickEvent::description() const
 template <class Impl>
 FullO3CPU<Impl>::FullO3CPU(DerivO3CPUParams *params)
     : BaseO3CPU(params),
-      itb(params->itb),
-      dtb(params->dtb),
       tickEvent(this),
 #ifndef NDEBUG
       instcount(0),
@@ -199,6 +198,11 @@ FullO3CPU<Impl>::FullO3CPU(DerivO3CPUParams *params)
       drainManager(NULL),
       lastRunningCycle(curCycle())
 {
+    itb = params->itb;
+    dtb = params->dtb;
+    MMUCache *mmuCache = new MMUCache;
+    itb->mmuCache = mmuCache;
+    dtb->mmuCache = mmuCache;
     if (!params->switched_out) {
         _status = Running;
     } else {
@@ -404,6 +408,7 @@ FullO3CPU<Impl>::FullO3CPU(DerivO3CPUParams *params)
 template <class Impl>
 FullO3CPU<Impl>::~FullO3CPU()
 {
+  delete dtb->mmuCache;
 }
 
 template <class Impl>

@@ -36,15 +36,15 @@
 class LRUPolicy : public AbstractReplacementPolicy
 {
   public:
-    LRUPolicy(int64 num_sets, int64 assoc);
+    LRUPolicy(uint64_t num_sets, uint64_t assoc);
     ~LRUPolicy();
 
-    void touch(int64 set, int64 way, Tick time);
-    int64 getVictim(int64 set) const;
+    void touch(uint64_t set, uint64_t way, Tick time);
+    uint64_t getVictim(uint64_t set) const;
 };
 
 inline
-LRUPolicy::LRUPolicy(int64 num_sets, int64 assoc)
+LRUPolicy::LRUPolicy(uint64_t num_sets, uint64_t assoc)
     : AbstractReplacementPolicy(num_sets, assoc)
 {
 }
@@ -55,7 +55,7 @@ LRUPolicy::~LRUPolicy()
 }
 
 inline void
-LRUPolicy::touch(int64 set, int64 index, Tick time)
+LRUPolicy::touch(uint64_t set, uint64_t index, Tick time)
 {
     assert(index >= 0 && index < m_assoc);
     assert(set >= 0 && set < m_num_sets);
@@ -63,12 +63,12 @@ LRUPolicy::touch(int64 set, int64 index, Tick time)
     m_last_ref_ptr[set][index] = time;
 }
 
-inline int64
-LRUPolicy::getVictim(int64 set) const
+inline uint64_t
+LRUPolicy::getVictim(uint64_t set) const
 {
     //  assert(m_assoc != 0);
     Tick time, smallest_time;
-    int64 smallest_index;
+    uint64_t smallest_index;
 
     smallest_index = 0;
     smallest_time = m_last_ref_ptr[set][0];

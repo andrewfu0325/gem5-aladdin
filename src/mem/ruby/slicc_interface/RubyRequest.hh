@@ -48,7 +48,7 @@ class RubyRequest : public Message
     int m_Size;
     PrefetchBit m_Prefetch;
     uint8_t* data;
-    PacketPtr pkt;
+    PacketPtr m_pkt;
     unsigned m_contextId;
 
     RubyRequest(Tick curTime, uint64_t _paddr, uint8_t* _data, int _len,
@@ -63,7 +63,7 @@ class RubyRequest : public Message
           m_Size(_len),
           m_Prefetch(_pb),
           data(_data),
-          pkt(_pkt),
+          m_pkt(_pkt),
           m_contextId(_proc_id)
     {
       m_LineAddress = m_PhysicalAddress;

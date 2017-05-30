@@ -35,7 +35,6 @@ machine(DMA, "DMA Controller")
 
       MessageBuffer * responseFromDir, network="From", virtual_network="2",
             ordered="false", vnet_type="response";
-
       MessageBuffer * reqToDir, network="To", virtual_network="1",
             ordered="false", vnet_type="request";
       MessageBuffer * respToDir, network="To", virtual_network="2",
@@ -59,6 +58,7 @@ machine(DMA, "DMA Controller")
     All_Acks,     desc="All acks received";
     Memory_Data,   desc="Fetched data from memory arrives";
     Memory_Ack,    desc="Writeback Ack from memory arrives";
+    EvictedRequest, desc="Data evicted from L1 cache";
   }
 
   structure(TBE, desc="...") {
@@ -113,6 +113,7 @@ machine(DMA, "DMA Controller")
   out_port(respToDirectory_out, ResponseMsg, respToDir, desc="...");
   out_port(triggerQueue_out, TriggerMsg, triggerQueue, desc="...");
 
+
   in_port(dmaRequestQueue_in, SequencerMsg, mandatoryQueue, desc="...") {
     if (dmaRequestQueue_in.isReady()) {
       peek(dmaRequestQueue_in, SequencerMsg) {
@@ -132,6 +133,7 @@ machine(DMA, "DMA Controller")
     }
   }
 
+
   in_port(dmaResponseQueue_in, ResponseMsg, responseFromDir, desc="...") {
     if (dmaResponseQueue_in.isReady()) {
       peek( dmaResponseQueue_in, ResponseMsg) {
@@ -144,6 +146,9 @@ machine(DMA, "DMA Controller")
                   TBEs[makeLineAddress(in_msg.Addr)]);
         } else if (in_msg.Type == CoherenceResponseType:ACK) {
           trigger(Event:Inv_Ack, makeLineAddress(in_msg.Addr),
+                  TBEs[makeLineAddress(in_msg.Addr)]);
+        } else if (in_msg.Type == CoherenceResponseType:EVICTED_ACC_TASK_DATA) {
+          trigger(Event:EvictedRequest, makeLineAddress(in_msg.Addr),
                   TBEs[makeLineAddress(in_msg.Addr)]);
         } else {
           error("Invalid response type");
@@ -281,6 +286,12 @@ machine(DMA, "DMA Controller")
     }
   }
 
+  action(g_getEvictionFromL1, "ge", desc="Get ACC-task data eviction from L1") {
+    peek(dmaResponseQueue_in, ResponseMsg) {
+      dma_sequencer.rubyGetEviction(in_msg.DataBlk, in_msg.Addr);
+    }
+  }
+
   action(d_dataCallbackFromTBE, "/d", desc="data callback with data from TBE") {
     assert(is_valid(tbe));
     dma_sequencer.dataCallback(tbe.DataBlk, address);
@@ -299,6 +310,10 @@ machine(DMA, "DMA Controller")
     unset_tbe();
   }
 
+  transition(READY, EvictedRequest) {
+    g_getEvictionFromL1;
+    p_popResponseQueue;
+  }
 
   transition(READY, ReadRequest, BUSY_RD) {
     s_sendReadRequest;

@@ -132,7 +132,6 @@ machine(Directory, "Directory protocol")
     void dmaReadHit(Address);
     void dmaReadMiss(Address);
     void outstandingReq();
-    void insertEviction(Address);
   }
 
   // ** OBJECTS **
@@ -409,7 +408,6 @@ machine(Directory, "Directory protocol")
   }
 
   action(c_clearOwner, "c", desc="Clear the owner field") {
-    TBEs.insertEviction(address);
     getDirectoryEntry(address).Owner.clear();
   }
 

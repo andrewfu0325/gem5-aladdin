@@ -46,6 +46,7 @@
 #ifndef __CPU_BASE_HH__
 #define __CPU_BASE_HH__
 
+#include <utility>
 #include <vector>
 
 // Before we do anything else, check if this build is the NULL ISA,
@@ -149,6 +150,11 @@ class BaseCPU : public MemObject
     /** Cache the cache line size that we get from the system */
     const unsigned int _cacheLineSize;
 
+    /** Record the current Acc-ask data address range*/
+    Addr _accTaskDataStart;
+    size_t _accTaskDataSize;
+    std::unordered_map<Addr, size_t> accTaskDataCtr;
+
   public:
 
     /**
@@ -205,6 +211,37 @@ class BaseCPU : public MemObject
     Tick instCount() { return instCnt; }
 
     TheISA::MicrocodeRom microcodeRom;
+
+    void setAccTaskDataRange(Addr start, size_t size) { 
+      _accTaskDataStart = start; 
+      _accTaskDataSize = size;
+      accTaskDataCtr.clear();
+    }
+
+    bool checkAccTaskData(Addr vaddr) {
+      return (vaddr >= _accTaskDataStart && 
+              vaddr <= (_accTaskDataStart + (Addr)_accTaskDataSize));}
+
+    std::pair<Addr, Addr> getAccTaskDataRange() {
+      return std::make_pair(_accTaskDataStart, 
+                       _accTaskDataStart + (Addr)_accTaskDataSize);}
+
+    void incAccTaskDataCtr(Addr vaddr, unsigned int bytes) {
+      if(accTaskDataCtr.find(vaddr) == accTaskDataCtr.end()) {
+        accTaskDataCtr.insert(std::make_pair(vaddr, bytes));
+      } else {
+        accTaskDataCtr[vaddr] += bytes;
+      }
+    }
+
+    bool checkAccTaskDataCtr(Addr vaddr){
+      if(accTaskDataCtr.find(vaddr) == accTaskDataCtr.end()) {
+        return false;
+      } else {
+        printf("# of written bytes for Acc-task Data %x: %u\n", vaddr, accTaskDataCtr[vaddr]);
+        return (accTaskDataCtr[vaddr] >= cacheLineSize() ? true : false);
+      }
+    }
 
   protected:
     TheISA::Interrupts *interrupts;

@@ -657,6 +657,56 @@ fcntlAladdinHandler(LiveProcess *process, ThreadContext *tc)
     delete string_buf;
 }
 
+bool forwardAccTaskData = false;
+BaseCPU *cpuPtr;
+
+void fcntlRegAccTaskDataForCache(LiveProcess *process, ThreadContext *tc) {
+    int index = 2;
+    Addr mapping_ptr = (Addr) process->getSyscallArg(tc, index);
+    SETranslatingPortProxy& memProxy = tc->getMemProxy();
+
+    // Deserialize the mapping struct bytes.
+    size_t word_size = 4;
+    if (process->getObjectFileArch() == ObjectFile::X86_64) {
+      word_size = 8;
+    }
+    uint8_t* mapping_buf = new uint8_t[sizeof(aladdin_map_t)];
+    memProxy.readBlob(mapping_ptr, mapping_buf, sizeof(aladdin_map_t));
+    aladdin_map_t mapping;
+    // Initialize all values to 0 so we avoid garbage from 32-bit to 64-bit
+    // conversions and only keep what we copy.
+    mapping.addr = nullptr;
+    void* array_name_addr = nullptr;
+    mapping.request_code = 0;
+    mapping.size = 0;
+    memcpy(&array_name_addr, &(mapping_buf[0]), word_size);
+    memcpy(&(mapping.addr), &(mapping_buf[word_size]), word_size);
+    memcpy(&(mapping.request_code), &(mapping_buf[2*word_size]), word_size);
+    memcpy(&(mapping.size), &(mapping_buf[3*word_size]), word_size);
+
+    // Extract the array name. Assume the variable name is at most 100 chars.
+    Addr string_addr = (Addr) array_name_addr;
+    uint8_t* string_buf = new uint8_t[100];
+    memProxy.readBlob(string_addr, string_buf, 100);
+    mapping.array_name = (const char*) string_buf;
+
+    Addr sim_base_addr = reinterpret_cast<Addr>(mapping.addr);
+
+    tc->getCpuPtr()->setAccTaskDataRange(sim_base_addr, mapping.size);
+    forwardAccTaskData = true;
+    cpuPtr = tc->getCpuPtr();
+
+    auto range = tc->getCpuPtr()->getAccTaskDataRange();
+    inform("Received L1 cache registration for ACC-task Data at %x - %x, size: %u.\n",
+           range.first, range.second, mapping.size);
+
+    delete mapping_buf;
+    delete string_buf;
+}
+void fcntlDelAccTaskDataForCache(LiveProcess *process, ThreadContext *tc) {
+    forwardAccTaskData = false;
+}
+
 SyscallReturn
 fcntlFunc(SyscallDesc *desc, int num, LiveProcess *process,
           ThreadContext *tc)
@@ -670,6 +720,12 @@ fcntlFunc(SyscallDesc *desc, int num, LiveProcess *process,
     int cmd = process->getSyscallArg(tc, index);
     if (cmd == ALADDIN_MAP_ARRAY) {
         fcntlAladdinHandler(process, tc);
+        return 0;
+    } else if(cmd == REG_ACC_TASK_DATA) {
+        fcntlRegAccTaskDataForCache(process, tc);
+        return 0;
+    } else if(cmd == DEL_ACC_TASK_DATA) {
+        fcntlDelAccTaskDataForCache(process, tc);
         return 0;
     }
 
@@ -718,6 +774,12 @@ fcntl64Func(SyscallDesc *desc, int num, LiveProcess *process,
     int cmd = process->getSyscallArg(tc, index);
     if (cmd == ALADDIN_MAP_ARRAY) {
         fcntlAladdinHandler(process, tc);
+        return 0;
+    } else if(cmd == REG_ACC_TASK_DATA) {
+        fcntlRegAccTaskDataForCache(process, tc);
+        return 0;
+    } else if(cmd == DEL_ACC_TASK_DATA) {
+        fcntlDelAccTaskDataForCache(process, tc);
         return 0;
     }
 

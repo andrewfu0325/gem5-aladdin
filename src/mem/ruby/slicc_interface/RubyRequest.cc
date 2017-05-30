@@ -67,12 +67,12 @@ RubyRequest::functionalWrite(Packet *pkt)
     // has to overwrite the data for the timing request, even if the
     // timing request has still not been ordered globally.
 
-    Addr wBase = pkt->getAddr();
-    Addr wTail = wBase + pkt->getSize();
+    Addr wBase = m_pkt->getAddr();
+    Addr wTail = wBase + m_pkt->getSize();
     Addr mBase = m_PhysicalAddress.getAddress();
     Addr mTail = mBase + m_Size;
 
-    const uint8_t * pktData = pkt->getConstPtr<uint8_t>();
+    const uint8_t * pktData = m_pkt->getConstPtr<uint8_t>();
 
     Addr cBase = std::max(wBase, mBase);
     Addr cTail = std::min(wTail, mTail);

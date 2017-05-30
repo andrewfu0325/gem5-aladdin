@@ -147,4 +147,20 @@ testAndWrite(Address addr, DataBlock& blk, Packet *pkt)
     return false;
 }
 
+static unsigned totalAccTaskSize = 0;
+
+inline void
+setAccTaskData(bool &AccTaskData, Packet *pkt)
+{
+    if (pkt->req->getFlags() & Request::ACC_TASK_DATA) {
+      assert(pkt->isWrite());
+      AccTaskData = true;
+      totalAccTaskSize += pkt->getSize();
+      printf("Capture Acc Task Data(VA) in L1 Cache: %x, accumulated bytes: %u\n", 
+             pkt->req->getVaddr(), totalAccTaskSize);
+    } else {
+      AccTaskData = false;
+    }
+}
+
 #endif // __MEM_RUBY_SLICC_INTERFACE_RUBYSLICCUTIL_HH__

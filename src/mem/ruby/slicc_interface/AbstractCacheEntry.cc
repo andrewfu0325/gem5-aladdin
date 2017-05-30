@@ -48,3 +48,50 @@ AbstractCacheEntry::changePermission(AccessPermission new_perm)
         m_locked = -1;
     }
 }
+
+void 
+AbstractCacheEntry::setVirtAddr(Packet *pkt)
+{
+    if(pkt->req->hasVaddr()) {
+      Address reqVaddr(pkt->req->getVaddr());
+      reqVaddr.makeLineAddress();
+      m_vAddress = reqVaddr;
+      if(forwardAccTaskData) {
+        /*if(cpuPtr->checkAccTaskData(pkt->req->getVaddr())) {
+          printf("Set virtual Address for Acc-task data: %x\n", pkt->req->getVaddr());
+          printf("Set virtual Address(Line) for Acc-task data: %x\n", m_vAddress.getAddress());
+        }*/
+        auto vaddr = m_vAddress.getAddress();
+        if(cpuPtr->checkAccTaskData(vaddr) && pkt->isWrite()) {
+          cpuPtr->incAccTaskDataCtr(vaddr, pkt->getSize());
+        }
+      }
+      hasVaddr = true;
+    } else {
+      hasVaddr = false;
+    }
+}
+
+bool 
+AbstractCacheEntry::checkAccTaskData()
+{
+    if(forwardAccTaskData && hasVaddr) {
+       auto range = cpuPtr->getAccTaskDataRange();
+       auto vaddr = m_vAddress.getAddress();
+       if(cpuPtr->checkAccTaskDataCtr(vaddr)) {
+         printf("Evict req %x fall in Acc-task data range %x - %x\n",
+                 vaddr, range.first, range.second); 
+         return true;
+       }
+       return false;
+    } else {
+        return false;
+    }
+}
+
+Address 
+AbstractCacheEntry::getVirtAddr()
+{
+    assert(hasVaddr);
+    return m_vAddress;
+}

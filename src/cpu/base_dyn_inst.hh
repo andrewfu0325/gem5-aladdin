@@ -926,6 +926,9 @@ BaseDynInst<Impl>::readMem(Addr addr, uint8_t *data,
     return fault;
 }
 
+static unsigned totalAccTaskSize = 0;
+extern bool forwardAccTaskData;
+
 template<class Impl>
 Fault
 BaseDynInst<Impl>::writeMem(uint8_t *data, unsigned size,
@@ -953,6 +956,21 @@ BaseDynInst<Impl>::writeMem(uint8_t *data, unsigned size,
         if (TheISA::HasUnalignedMemAcc) {
             splitRequest(req, sreqLow, sreqHigh);
         }
+        auto range = cpu->getAccTaskDataRange();
+        if(forwardAccTaskData && cpu->checkAccTaskData(req->getVaddr())) {
+          auto range = cpu->getAccTaskDataRange();
+          totalAccTaskSize += req->getSize();
+          printf("Write req %x fall in Acc-task data range %x - %x, accumulated bytes: %u\n", 
+                 req->getVaddr(), range.first, range.second, totalAccTaskSize);
+          req->setFlags(Request::ACC_TASK_DATA);
+          if(sreqLow != NULL) {
+            sreqLow->setFlags(Request::ACC_TASK_DATA);
+          }
+          if(sreqHigh != NULL) {
+            sreqHigh->setFlags(Request::ACC_TASK_DATA);
+          }
+        }
+    
         initiateTranslation(req, sreqLow, sreqHigh, res, BaseTLB::Write);
     }
 

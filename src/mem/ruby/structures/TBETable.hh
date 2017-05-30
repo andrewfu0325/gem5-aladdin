@@ -72,11 +72,13 @@ class TBETable
         printf("Outstanding Req: %d/%d\n", m_map.size(), m_number_of_TBEs);
     }
     // Record Evictions
-    void insertEviction(const Address& address){
- //           printf("Maximum size of set: %u\n", Evictions.max_size());
- //           printf("size of set: %u\n", Evictions.size());
- //           printf("Evict: 0x%x\n", address.getAddress());
-            Evictions.insert(address.getAddress());
+    void insertEviction(const Address& address) {
+ //     printf("Maximum size of set: %u\n", Evictions.max_size());
+ //     printf("size of set: %u\n", Evictions.size());
+      printf("Evict: %x\n", address.getAddress());
+    }
+    void recvEviction(const Address& address) {
+      printf("Recv Evict: 0x%x\n", address.getAddress());
     }
   private:
     // Private copy constructor and assignment operator

@@ -132,6 +132,8 @@ MasterPort::bind(BaseSlavePort& slave_port)
     // also attempt to base the slave to the appropriate type
     SlavePort* cast_slave_port = dynamic_cast<SlavePort*>(&slave_port);
 
+    printf("Master port %s cannot bind to %s\n", name().c_str(),
+          slave_port.name().c_str());
     // if this port is compatible, then proceed with the binding
     if (cast_slave_port != NULL) {
         // master port keeps track of the slave port

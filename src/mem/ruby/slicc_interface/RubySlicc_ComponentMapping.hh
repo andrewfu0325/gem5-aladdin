@@ -77,6 +77,16 @@ mapAddressToRange(const Address & addr, MachineType type, int low_bit,
     return mach;
 }
 
+//Hardcode DMA ID
+inline MachineID
+getDmaID()
+{
+    MachineID dmaID;
+    dmaID.type = MachineType_DMA;
+    dmaID.num = 0;
+    return dmaID;
+}
+
 inline NodeID
 machineIDToNodeID(MachineID machID)
 {

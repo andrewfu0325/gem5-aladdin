@@ -33,6 +33,7 @@
 #include <ostream>
 #include <unordered_map>
 
+#include "aladdin/gem5/HybridDatapath.h"
 #include "mem/protocol/DMASequencerRequestType.hh"
 #include "mem/ruby/common/Address.hh"
 #include "mem/protocol/RequestStatus.hh"
@@ -123,6 +124,7 @@ class DMASequencer : public MemObject
     //void ackCallback();
     void dataCallback(const DataBlock &dblk, const Address &addr);
     void ackCallback(const Address &addr);
+    void rubyGetEviction(const DataBlock &dblk, const Address &addr);
 
     void recordRequestType(DMASequencerRequestType requestType);
 

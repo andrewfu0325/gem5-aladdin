@@ -162,6 +162,9 @@ class Request
     /** The request is a page table walk */
     static const FlagsType PT_WALK                     = 0x20000000;
 
+    /** The request is a ACC-Task data */
+    static const FlagsType ACC_TASK_DATA               = 0x40000000;
+
     /** These flags are *not* cleared when a Request object is reused
        (assigned a new address). */
     static const FlagsType STICKY_FLAGS = INST_FETCH;

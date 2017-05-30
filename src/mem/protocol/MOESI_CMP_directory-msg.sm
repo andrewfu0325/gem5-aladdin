@@ -60,6 +60,7 @@ enumeration(CoherenceResponseType, desc="...") {
   WRITEBACK_CLEAN_ACK,   desc="Clean writeback (contains no data)";
   WRITEBACK_DIRTY_DATA,   desc="Dirty writeback (contains data)";
   DMA_ACK,           desc="Ack that a DMA write completed";
+  EVICTED_ACC_TASK_DATA,     desc="Testing";
 }
 
 // TriggerType

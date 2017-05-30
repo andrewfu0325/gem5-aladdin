@@ -69,7 +69,7 @@ class DmaPort : public MasterPort
         Event *completionEvent;
 
         /** Total number of bytes that this transaction involves. */
-        const Addr totBytes;
+        Addr totBytes;
 
         /** Number of bytes that have been acked for this transaction. */
         Addr numBytes;

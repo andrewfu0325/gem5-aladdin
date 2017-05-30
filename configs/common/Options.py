@@ -62,7 +62,7 @@ def addCommonOptions(parser):
     parser.add_option("--list-cpu-types",
                       action="callback", callback=_listCpuTypes,
                       help="List available CPU types")
-    parser.add_option("--cpu-type", type="choice", default="atomic",
+    parser.add_option("--cpu-type", type="choice", default="detailed",
                       choices=CpuConfig.cpu_names(),
                       help = "type of cpu to run with")
     parser.add_option("--checker", action="store_true");

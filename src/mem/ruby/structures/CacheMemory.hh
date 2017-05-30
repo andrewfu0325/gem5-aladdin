@@ -56,6 +56,8 @@ class CacheMemory : public SimObject
 
     void init();
 
+    void setVirtAddr(){}
+
     // Public Methods
     // perform a cache access and see if we hit or not.  Return true on a hit.
     bool tryCacheAccess(const Address& address, RubyRequestType type,

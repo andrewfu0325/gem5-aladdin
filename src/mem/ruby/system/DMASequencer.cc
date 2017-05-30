@@ -28,6 +28,7 @@
 
 #include <memory>
 
+#include "dev/dma_device.hh"
 #include "debug/Config.hh"
 #include "debug/Drain.hh"
 #include "debug/RubyDma.hh"
@@ -154,6 +155,23 @@ DMASequencer::ruby_hit_callback(PacketPtr pkt)
     }
 
     testDrainComplete();
+}
+
+void
+DMASequencer::rubyGetEviction(const DataBlock &dblk, const Address &addr)
+{
+    Request::Flags flags = Request::UNCACHEABLE;
+    size_t blkSz = RubySystem::getBlockSizeBytes();
+    uint8_t *data = new uint8_t[blkSz];
+    memcpy(data, dblk.getData(0, blkSz), blkSz);
+    RequestPtr req = new Request(addr.getAddress(), blkSz, flags, MasterID(0));
+    PacketPtr pkt = new Packet(req, MemCmd::ReadResp);
+    pkt->dataStatic(data + blkSz);
+    HybridDatapath::DmaEvent* event = new HybridDatapath::DmaEvent(nullptr, -1);
+    DmaPort::DmaReqState *reqState = new DmaPort::DmaReqState(event, blkSz, addr.getAddress(), 0);
+    pkt->senderState = reqState;
+    
+    slave_port.sendTimingResp(pkt);
 }
 
 void
