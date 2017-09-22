@@ -91,7 +91,7 @@ x86. ARM support is planned for a future release.
 Type the following command to build the simulator:
 
   ```
-  scons build/X86/gem5.opt
+  scons build/X86_MOESI_CMP_directory/gem5.opt
   ```
 
 This will build an optimized version of the gem5 binary (gem5.opt) for the
