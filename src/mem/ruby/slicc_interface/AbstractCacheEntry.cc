@@ -33,6 +33,7 @@ AbstractCacheEntry::AbstractCacheEntry()
     m_Permission = AccessPermission_NotPresent;
     m_Address.setAddress(0);
     m_locked = -1;
+    enableCtr = 0;
 }
 
 AbstractCacheEntry::~AbstractCacheEntry()
@@ -49,41 +50,55 @@ AbstractCacheEntry::changePermission(AccessPermission new_perm)
     }
 }
 
+void
+AbstractCacheEntry::setCtr(int _enableCtr)
+{  
+  enableCtr = (bool)_enableCtr;
+}
+
 void 
 AbstractCacheEntry::setVirtAddr(Packet *pkt)
 {
-    if(pkt->req->hasVaddr()) {
+    if(pkt->req->hasVaddr() && forwardAccTaskData) {
       Address reqVaddr(pkt->req->getVaddr());
       reqVaddr.makeLineAddress();
       m_vAddress = reqVaddr;
-      if(forwardAccTaskData) {
         /*if(cpuPtr->checkAccTaskData(pkt->req->getVaddr())) {
           printf("Set virtual Address for Acc-task data: %x\n", pkt->req->getVaddr());
           printf("Set virtual Address(Line) for Acc-task data: %x\n", m_vAddress.getAddress());
         }*/
         auto vaddr = m_vAddress.getAddress();
         if(cpuPtr->checkAccTaskData(vaddr) && pkt->isWrite()) {
+          cpuPtr->incAccTaskDataInCache(vaddr);
           cpuPtr->incAccTaskDataCtr(vaddr, pkt->getSize());
         }
-      }
       hasVaddr = true;
     } else {
       hasVaddr = false;
     }
 }
 
+static unsigned accumBytes = 0;
+
 bool 
 AbstractCacheEntry::checkAccTaskData()
 {
     if(forwardAccTaskData && hasVaddr) {
-       auto range = cpuPtr->getAccTaskDataRange();
-       auto vaddr = m_vAddress.getAddress();
-       if(cpuPtr->checkAccTaskDataCtr(vaddr)) {
-         printf("Evict req %x fall in Acc-task data range %x - %x\n",
-                 vaddr, range.first, range.second); 
-         return true;
-       }
-       return false;
+			auto range = cpuPtr->getAccTaskDataRange();
+			auto vaddr = m_vAddress.getAddress();
+			if(cpuPtr->checkAccTaskDataCtr(vaddr) && enableCtr) {
+				printf("Evict req %x fall in Acc-task data range %x - %x(ctr enable)\n",
+						vaddr, range.first, range.second); 
+				return true;
+			}
+			if(cpuPtr->checkAccTaskData(vaddr)) {
+        accumBytes += 64;
+				printf("Evict req %x fall in Acc-task data range %x - %x(ctr disable), accum: %d\n",
+						vaddr, range.first, range.second, accumBytes); 
+        cpuPtr->decAccTaskDataInCache(vaddr);
+        return true;
+			}
+			return false;
     } else {
         return false;
     }

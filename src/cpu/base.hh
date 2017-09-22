@@ -154,6 +154,7 @@ class BaseCPU : public MemObject
     Addr _accTaskDataStart;
     size_t _accTaskDataSize;
     std::unordered_map<Addr, size_t> accTaskDataCtr;
+    std::unordered_set<Addr> accTaskDataInCache;
 
   public:
 
@@ -232,6 +233,22 @@ class BaseCPU : public MemObject
       } else {
         accTaskDataCtr[vaddr] += bytes;
       }
+    }
+
+    void incAccTaskDataInCache(Addr vaddr) {
+      if(accTaskDataInCache.find(vaddr) == accTaskDataInCache.end()) {
+        accTaskDataInCache.insert(vaddr);
+      }
+    }
+
+    void decAccTaskDataInCache(Addr vaddr) {
+      if(accTaskDataInCache.find(vaddr) != accTaskDataInCache.end()) {
+        accTaskDataInCache.erase(vaddr);
+      }
+    }
+
+    bool checkAccTaskDataInCache(Addr vaddr) {
+      return (accTaskDataInCache.find(vaddr) != accTaskDataInCache.end()); 
     }
 
     bool checkAccTaskDataCtr(Addr vaddr){

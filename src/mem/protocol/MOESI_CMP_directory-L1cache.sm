@@ -32,9 +32,10 @@ machine(L1Cache, "Directory protocol")
    CacheMemory * L1Dcache;
    int l2_select_num_bits;
    int ClusterNum;
-   Cycles request_latency := 2;
+   Cycles request_latency := 1;
    Cycles use_timeout_latency := 50;
    bool send_evictions;
+   int enableCtr := 0;
 
    // Message Queues
    // From this node's L1 cache TO the network
@@ -888,7 +889,11 @@ machine(L1Cache, "Directory protocol")
   action(s_setVirtAddr, "sv", desc="Set L1 D-cache tag equal to tag of block B.") {
     peek(mandatoryQueue_in, RubyRequest) {
       cache_entry.setVirtAddr(in_msg.pkt);
-    }
+    }  
+  }
+
+  action(s_setCtr, "sctr", desc="Set L1 D-cache tag equal to tag of block B.") {
+    cache_entry.setCtr(enableCtr);
   }
 
   action(jj_allocateL1ICacheBlock, "\j", desc="Set L1 I-cache tag equal to tag of block B.") {
@@ -955,6 +960,7 @@ machine(L1Cache, "Directory protocol")
     i_allocateTBE;
     a_issueGETS;
     s_setVirtAddr;
+    s_setCtr;
     uu_profileDataMiss;
     k_popMandatoryQueue;
   }
@@ -972,6 +978,7 @@ machine(L1Cache, "Directory protocol")
     i_allocateTBE;
     b_issueGETX;
     s_setVirtAddr;
+    s_setCtr;
     uu_profileDataMiss;
     k_popMandatoryQueue;
   }
@@ -989,6 +996,7 @@ machine(L1Cache, "Directory protocol")
     h_load_hit;
     uu_profileDataHit;
     s_setVirtAddr;
+    s_setCtr;
     k_popMandatoryQueue;
   }
 
@@ -1004,6 +1012,7 @@ machine(L1Cache, "Directory protocol")
     b_issueGETX;
     uu_profileDataMiss;
     s_setVirtAddr;
+    s_setCtr;
     k_popMandatoryQueue;
   }
 
@@ -1036,6 +1045,7 @@ machine(L1Cache, "Directory protocol")
     b_issueGETX;
     uu_profileDataMiss;
     s_setVirtAddr;
+    s_setCtr;
     k_popMandatoryQueue;
   }
 
@@ -1067,6 +1077,7 @@ machine(L1Cache, "Directory protocol")
     hh_store_hit;
     uu_profileDataHit;
     s_setVirtAddr;
+    s_setCtr;
     k_popMandatoryQueue;
   }
 
@@ -1099,6 +1110,7 @@ machine(L1Cache, "Directory protocol")
     hh_store_hit;
     uu_profileDataHit;
     s_setVirtAddr;
+    s_setCtr;
     k_popMandatoryQueue;
   }
 
@@ -1106,6 +1118,7 @@ machine(L1Cache, "Directory protocol")
     hh_store_hit;
     uu_profileDataHit;
     s_setVirtAddr;
+    s_setCtr;
     k_popMandatoryQueue;
   }
 

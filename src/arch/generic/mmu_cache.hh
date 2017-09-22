@@ -24,6 +24,7 @@ class MMUCache {
         std::unordered_map<PTIdx, PageTable*> nPT;
     };
 
+    Addr getCR3Reg() {return CR3Reg;}
     bool isTagPresent(MMUCacheTag Tag);
     void pageWalker(Addr vaddr);
     PageTable *walkPageTable(PageTable *pg, PTIdx idx);
@@ -32,7 +33,7 @@ class MMUCache {
   private:
     std::pair<uint64_t, PageTable*> lookup(MMUCacheTag Tag);
 
-    const static size_t size = 12;
+    const static size_t size = 8;
     uint64_t hit;
     uint64_t miss;
 

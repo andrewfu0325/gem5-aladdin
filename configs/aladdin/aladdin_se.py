@@ -224,6 +224,7 @@ if options.accel_cfg_file:
     datapath.invalidateOnDmaStore = config.getboolean(accel, "invalidate_on_dma_store")
     datapath.dmaFetchFromDRAM = config.getboolean(accel, "dma_fetch_from_dram")
     datapath.isPerfectTranslation = config.getboolean(accel, "is_perfect_translation")
+    datapath.cacheForwarding = config.getboolean(accel, "cache_forwarding")
     datapath.hostPageWalk = config.getboolean(accel, "host_page_walk")
     if memory_type == "cache":
       datapath.cacheSize = config.get(accel, "cache_size")

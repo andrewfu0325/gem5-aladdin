@@ -56,7 +56,7 @@
 #define MAX_DMA_REQUEST 64
 
 /* Maximum of DMA channels*/
-#define MAX_CHANNELS 20
+#define MAX_CHANNELS 10000
 
 class DmaPort : public MasterPort
 {
@@ -91,6 +91,7 @@ class DmaPort : public MasterPort
     };
 
     friend class HybridDatapath;
+    friend class AladdinTLB;
 
   private:
 

@@ -139,7 +139,8 @@ def addCommonOptions(parser):
     parser.add_option("--l3_assoc", type="int", default=16)
     parser.add_option("--l1d_hit_latency", type="int", default="2")
     parser.add_option("--l1i_hit_latency", type="int", default="2")
-    parser.add_option("--l2_hit_latency", type="int", default="20")
+    parser.add_option("--l2_tag_latency", type="int", default="20")
+    parser.add_option("--l2_data_latency", type="int", default="20")
     parser.add_option("--cacheline_size", type="int", default=64)
     parser.add_option("--num-mems", type="int", default=2)
     parser.add_option("--dir_size", type="string", default="2MB")
@@ -148,6 +149,8 @@ def addCommonOptions(parser):
     parser.add_option("--dir_latency", type="int", default=8)
     parser.add_option("--dir_assoc", type="int", default=8)
     parser.add_option("--xbar_width", type="int", default=16)
+    parser.add_option("--enableCtr", type="int", default=0)
+
 
     # DMA options
     parser.add_option("--dma_outstanding_requests", type="int", default=32)

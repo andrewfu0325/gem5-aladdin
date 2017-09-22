@@ -30,7 +30,7 @@ machine(Directory, "Directory protocol")
 :  DirectoryMemory * directory;
    CacheMemory * probeFilter;
    Cycles directory_latency := 6;
-   Cycles to_memory_controller_latency := 2;
+   Cycles to_memory_controller_latency := 1;
    bool probe_filter_enabled := "False";
    bool full_bit_dir_enabled := "False";
 

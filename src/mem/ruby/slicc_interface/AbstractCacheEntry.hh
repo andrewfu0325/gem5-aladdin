@@ -58,6 +58,7 @@ class AbstractCacheEntry : public AbstractEntry
     void changePermission(AccessPermission new_perm);
 
     void setVirtAddr(Packet *pkt);
+    void setCtr(int _enableCtr);
     bool checkAccTaskData();
     Address getVirtAddr();
 
@@ -72,6 +73,7 @@ class AbstractCacheEntry : public AbstractEntry
     int m_locked; // Holds info whether the address is locked,
                   // required for implementing LL/SC
     bool hasVaddr;
+    bool enableCtr;
 };
 
 inline std::ostream&

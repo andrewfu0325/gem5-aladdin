@@ -113,7 +113,7 @@ class Cluster(SimpleTopology):
                   delay = 1
                 elif type(node) == L2Cache_Controller:
                   bw = 4096
-                  delay = 2
+                  delay = 1
                 elif type(node) == Directory_Controller:
                   bw = 4096
                   delay = 6

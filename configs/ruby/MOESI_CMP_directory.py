@@ -114,7 +114,8 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
                                       transitions_per_cycle = options.ports,
                                       clk_domain=system.cpu[i].clk_domain,
                                       ruby_system = ruby_system,
-                                      number_of_TBEs = options.l1_mshrs)
+                                      number_of_TBEs = options.l1_mshrs,
+                                      enableCtr = options.enableCtr)
 
         cpu_seq = RubySequencer(version = i,
                                 icache = l1i_cache,
@@ -204,8 +205,8 @@ def create_system(options, full_system, system, dma_ports, ruby_system):
         #
 
         l2_cache = L2Cache(size = options.l2_size,
-                           tagAccessLatency = options.l2_hit_latency,
-                           dataAccessLatency = options.l2_hit_latency,
+                           tagAccessLatency = options.l2_tag_latency,
+                           dataAccessLatency = options.l2_data_latency,
                            assoc = options.l2_assoc,
                            start_index_bit = l2_index_start,
                            dataArrayBanks = options.l2_banks,

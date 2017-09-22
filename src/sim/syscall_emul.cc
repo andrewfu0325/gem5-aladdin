@@ -625,8 +625,8 @@ fcntlAladdinHandler(LiveProcess *process, ThreadContext *tc)
 
     // Extract the array name. Assume the variable name is at most 100 chars.
     Addr string_addr = (Addr) array_name_addr;
-    uint8_t* string_buf = new uint8_t[100];
-    memProxy.readBlob(string_addr, string_buf, 100);
+    uint8_t* string_buf = new uint8_t[20];
+    memProxy.readBlob(string_addr, string_buf, 20);
     mapping.array_name = (const char*) string_buf;
 
     inform("Received mapping for array %s at vaddr %x of length %d.\n",

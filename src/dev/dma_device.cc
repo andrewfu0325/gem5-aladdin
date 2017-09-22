@@ -85,7 +85,7 @@ DmaPort::handleResp(PacketPtr pkt, Tick delay)
 
     DPRINTF(DMA, "Received response %s for addr: %#x, addr: %#x size: %d nb: %d,"  \
             " tot: %d sched %d outstanding:%u\n",
-            pkt->cmdString(), state->addr,
+
             pkt->getAddr(), pkt->req->getSize(),
             state->numBytes, state->totBytes,
             state->completionEvent ?
@@ -107,7 +107,6 @@ DmaPort::handleResp(PacketPtr pkt, Tick delay)
             delay += state->delay;
             device->schedule(state->completionEvent, curTick() + delay);
         }
-        delete state;
     }
 
     // delete the request that we created and also the packet
@@ -318,7 +317,7 @@ DmaPort::switchToNextChannel()
 	unsigned num_channels = transmitList.size();
 	// If the current channel is empty, or DMA is in multi-channel mode,
 	// move on to the next channel.
-  DmaReqState *state;
+  DmaReqState *state = transmitList[currChannelIdx].first;
 	if (transmitList[currChannelIdx].second.empty() || multiChannel) {
 		nextChannelIdx = (currChannelIdx + 1) % num_channels;
 		// Check whether next channel is empty
@@ -349,7 +348,7 @@ DmaPort::switchToNextChannel()
 		// cycle
 		device->schedule(sendEvent, device->clockEdge(Cycles(1)));
 	  DPRINTF(DMA, "-- Switch to the next channel %d\n", currChannelIdx);
-    DPRINTF(DMA, "-- Channel %d, reamining requests: %d, total bytes: %d, issued bytes: %d\n", nextChannelIdx, transmitList[nextChannelIdx].second.size(), state->totBytes, state->numBytes);
+    DPRINTF(DMA, "-- Channel %d, remaining requests: %d, total bytes: %d, issued bytes: %d\n", nextChannelIdx, transmitList[nextChannelIdx].second.size(), state->totBytes, state->numBytes);
 	} else {
 		// Reset the channel idx for the next transfer.
 		currChannelIdx = 0;
@@ -372,28 +371,30 @@ DmaPort::trySendTimingReq()
     // following send if it is successful
     PacketPtr pkt = transmitList[currChannelIdx].second.front();
 
-    DPRINTF(DMA, "Trying to send %s addr %#x of size %d\n", pkt->cmdString(),
-            pkt->getAddr(), pkt->req->getSize());
-    if(pkt->isRead() && ReqLatency.find(pkt->getAddr()) == ReqLatency.end()) {
-      ReqLatency.insert(std::make_pair(pkt->getAddr(), curTick()));
-      printf("Start DMA Req cycles 0x%x: %u\n", pkt->getAddr(), ReqLatency[pkt->getAddr()]);
-    }
+    DPRINTF(DMA, "Trying to send %s addr %#x of size %d on Channel %d\n", pkt->cmdString(),
+            pkt->getAddr(), pkt->req->getSize(), currChannelIdx);
     inRetry = !sendTimingReq(pkt);
     if (!inRetry) {
-        // pop the first packet in the current channel
-        transmitList[currChannelIdx].second.pop_front();
-        DPRINTF(DMA, "Channel %d remaining requests: %d\n", currChannelIdx, transmitList[currChannelIdx].second.size());
-        if(pkt->isRead()) {
+        if(pkt->isRead() && !pkt->isReadFromDRAM() &&
+           ReqLatency.find(pkt->getAddr()) == ReqLatency.end()) {
+          ReqLatency.insert(std::make_pair(pkt->getAddr(), curTick()));
+          printf("Start DMA Req cycles 0x%x: %u\n", pkt->getAddr(), ReqLatency[pkt->getAddr()]);
           DmaRead++;
         }
-        NumDMAReq++;
+        if(!pkt->isReadFromDRAM())
+          NumDMAReq++;
+        // pop the first packet in the current channel
+        transmitList[currChannelIdx].second.pop_front();
+        DmaReqState *state = transmitList[currChannelIdx].first;
+        DPRINTF(DMA, "-- Channel %d, remaining requests: %d, total bytes: %d, issued bytes: %d\n", currChannelIdx, transmitList[currChannelIdx].second.size(), state->totBytes, state->numBytes);
 
 
         DPRINTF(DMA,
                "Sent %s addr %#x with size %d from channel %d. \n",
                 pkt->cmdString(),
                 pkt->getAddr(),
-                pkt->req->getSize());
+                pkt->req->getSize(),
+                currChannelIdx);
         // Invalidations do not have responses, so they complete as soon as
         // they send and do not count as an outstanding request.
         if (pkt->cmd == MemCmd::InvalidationReq) {

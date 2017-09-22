@@ -12,7 +12,8 @@ static std::uniform_int_distribution<long long int> dist(
 
 MMUCache::MMUCache() : hit(0), miss(0) {
   CR3Reg = dist(e2);
-  CR3Reg &= ~mask(9);
+  CR3Reg &= ~mask(12);
+  CR3Reg &= mask(30);
   PageTable *L4PT = new PageTable(CR3Reg);
   emulVirtMem.insert(std::make_pair(CR3Reg, L4PT));
   pseudoLRU = new PseudoLRUPolicy(1, size);
@@ -33,7 +34,7 @@ MMUCache::getTopLevelPageTable() {
 
 void
 MMUCache::pageWalker(Addr vaddr) {
-  printf("Page walking for vaddr: %llx\n", vaddr);
+  //printf("Page walking for vaddr: %llx\n", vaddr);
   vaddr &= mask(48);
   PTIdx L4Idx = (PTIdx)(vaddr >> 39);
   PTIdx L3Idx = (PTIdx)((vaddr >> 30) & mask(9));
@@ -47,27 +48,29 @@ MMUCache::pageWalker(Addr vaddr) {
   PageTable *L2PT = walkPageTable(L3PT, L3Idx);
   //printf("L2Idx: %llx\n", L2Idx);
   walkPageTable(L2PT, L2Idx);
-  printf("MMU Cache Hit: %lu\n", hit);
-  printf("MMU Cache Miss: %lu\n", miss);
-  printf("MMU Hit Rate: %f\n", (float)hit / ((float)hit + (float)miss));
+  //printf("MMU Cache Hit: %lu\n", hit);
+  //printf("MMU Cache Miss: %lu\n", miss);
+  //printf("MMU Hit Rate: %f\n", (float)hit / ((float)hit + (float)miss));
 }
 
 MMUCache::PageTable*
 MMUCache::walkPageTable(PageTable *pt, PTIdx idx) {
-  MMUCacheTag tag = idx + pt->startAddr;
-  printf("MMUCacheTag: %llx\n", tag);
+  MMUCacheTag tag = (idx << 3) + pt->startAddr;
+  //printf("MMUCacheTag: %llx\n", tag);
   auto entry = lookup(tag);
   PageTable *nextPt = entry.second;
   if (nextPt == nullptr) {
-    printf("MMU Cache Miss!\n");
+    //printf("MMU Cache Miss!\n");
     miss++;
     // Generate a new page table for the first-touch page table
     if(pt->nPT.find(idx) == pt->nPT.end()) {
       Addr pageAddr = dist(e2);
-      pageAddr &= ~mask(9);
+      pageAddr &= ~mask(12);
+      pageAddr &= mask(29);
       while(emulVirtMem.find(pageAddr) != emulVirtMem.end()) {
         pageAddr = dist(e2);
-        pageAddr &= ~mask(9);
+        pageAddr &= ~mask(12);
+        pageAddr &= mask(30);
       }
       nextPt = new PageTable(pageAddr);
       emulVirtMem.insert(std::make_pair(pageAddr, nextPt));
@@ -80,7 +83,7 @@ MMUCache::walkPageTable(PageTable *pt, PTIdx idx) {
     pseudoLRU->touch(0, assoc, Tick(hit + miss));
 
   } else {
-    printf("MMU Cache Hit!\n");
+    //printf("MMU Cache Hit!\n");
     hit++;
     pseudoLRU->touch(0, entry.first, Tick(hit + miss));
     nextPt = entry.second;

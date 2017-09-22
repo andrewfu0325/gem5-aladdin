@@ -306,6 +306,7 @@ RubyPort::MemSlavePort::recvFunctional(PacketPtr pkt)
         // This line should be removed once Ruby supplies the official version
         // of data.
         ruby_system->getPhysMem()->functionalAccess(pkt);
+        DPRINTF(RubyPort, "Functional access!\n");
     } else {
         bool accessSucceeded = false;
         bool needsResponse = pkt->needsResponse();

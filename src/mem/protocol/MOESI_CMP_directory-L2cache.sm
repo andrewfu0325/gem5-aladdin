@@ -28,8 +28,8 @@
 
 machine(L2Cache, "Token protocol")
 : CacheMemory * L2cache;
-  Cycles response_latency := 2;
-  Cycles request_latency := 2;
+  Cycles response_latency := 1;
+  Cycles request_latency := 1;
 
   // L2 BANK QUEUES
   // From local bank of L2 cache TO the network

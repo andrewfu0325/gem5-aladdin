@@ -141,6 +141,7 @@ structure (DirectoryMemory, external = "yes") {
 structure(AbstractCacheEntry, primitive="yes", external = "yes") {
   void changePermission(AccessPermission);
   void setVirtAddr(Packet);
+  void setCtr(int);
   bool checkAccTaskData();
   Address getVirtAddr();
 }
