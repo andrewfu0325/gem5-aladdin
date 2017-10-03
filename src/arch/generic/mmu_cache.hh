@@ -33,7 +33,7 @@ class MMUCache {
   private:
     std::pair<uint64_t, PageTable*> lookup(MMUCacheTag Tag);
 
-    const static size_t size = 8;
+    const static size_t size = 24;
     uint64_t hit;
     uint64_t miss;
 
